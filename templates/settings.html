@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net data:; connect-src 'self'">
+    <title>Settings - Triton AI</title>
+    
+    <!-- Core libraries -->
+    <link rel="icon" href="/static/icons/logo.svg" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons and styling -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    
+    <!-- Custom JS -->
+    <script src="/static/js/notification-service.js" defer></script>
+    <script src="/static/js/auth.js" defer></script>
+    
+    <!-- Load Alpine.js AFTER all component scripts -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Tailwind custom theme configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            950: '#082f49',
+                        },
+                        secondary: {
+                            50: '#f5f7fa',
+                            100: '#eaeef4',
+                            200: '#d1dae7',
+                            300: '#a6bad3',
+                            400: '#7596ba',
+                            500: '#5378a2',
+                            600: '#3f5f87',
+                            700: '#354e6f',
+                            800: '#2f435e',
+                            900: '#2b3a4f',
+                            950: '#1a2333',
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            700: '#15803d',
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            700: '#b45309',
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444',
+                            700: '#b91c1c',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-secondary-50 text-secondary-900 font-sans antialiased">
+    <div x-data="settingsApp()" x-init="initialize()" x-cloak>
+        <!-- Auth check - redirect to login if not authenticated -->
+        <div x-show="!isAuthenticated && !isCheckingAuth" x-transition class="fixed inset-0 flex items-center justify-center bg-secondary-900/90 z-50">
+            <div class="bg-white p-8 rounded-lg shadow-2xl max-w-md w-full text-center">
+                <div class="text-5xl text-primary-500 mb-6">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2 class="text-2xl font-bold mb-4">Authentication Required</h2>
+                <p class="mb-6 text-secondary-600">Please log in to access settings</p>
+                <a href="/login" class="inline-block bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                    Go to Login
+                </a>
+            </div>
+        </div>
+        
+        <!-- Loading Screen -->
+        <div x-show="isCheckingAuth" x-transition class="fixed inset-0 flex items-center justify-center bg-secondary-50 z-50">
+            <div class="text-center">
+                <div class="inline-block">
+                    <svg class="animate-spin h-12 w-12 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <p class="mt-4 text-secondary-600">Loading settings...</p>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div x-show="isAuthenticated" x-transition>
+            <!-- Header -->
+            <header class="bg-white border-b border-secondary-200 px-4 py-3 flex justify-between items-center shadow-sm z-10 h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-secondary-500 hover:text-primary-600 transition-colors p-2 rounded-md">
+                        <i class="fas fa-arrow-left text-xl"></i>
+                    </a>
+                    <div class="flex items-center">
+                        <img src="/static/icons/logo.svg" alt="Triton Logo" class="h-8 w-8 mr-3" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔱</text></svg>'">
+                        <h1 class="text-xl font-semibold text-secondary-900">Triton<span class="text-primary-600">AI</span></h1>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <a href="/profile" class="text-secondary-700 hover:text-primary-600 transition-colors flex items-center space-x-1">
+                        <i class="fas fa-user-circle"></i>
+                        <span>Profile</span>
+                    </a>
+                </div>
+            </header>
+
+            <div class="max-w-4xl mx-auto py-8 px-4">
+                <h1 class="text-2xl font-bold mb-8">Settings</h1>
+                
+                <div class="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+                    <h2 class="text-lg font-medium mb-4">Application Preferences</h2>
+                    
+                    <div x-show="settingsSuccess" class="mb-4 bg-success-50 text-success-700 p-3 rounded-md border border-success-200">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span x-text="settingsSuccess"></span>
+                        </div>
+                    </div>
+                    
+                    <form @submit.prevent="saveSettings" class="space-y-6">
+                        <!-- Default Model -->
+                        <div>
+                            <label class="block text-sm font-medium text-secondary-700 mb-2">Default AI Model</label>
+                            <div class="relative">
+                                <div x-show="isLoadingModels" class="w-full md:w-1/2 px-3 py-2 border border-secondary-300 rounded-lg text-secondary-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Loading models...
+                                </div>
+                                <select 
+                                    x-show="!isLoadingModels"
+                                    x-model="settings.defaultModel" 
+                                    class="w-full md:w-1/2 px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                >
+                                    <template x-for="category in modelCategories" :key="category.name">
+                                        <optgroup :label="category.name">
+                                            <template x-for="model in category.models" :key="model.id">
+                                                <option :value="model.id" x-text="model.name"></option>
+                                            </template>
+                                        </optgroup>
+                                    </template>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Default Features -->
+                        <div>
+                            <label class="block text-sm font-medium text-secondary-700 mb-2">Default Features</label>
+                            <div class="space-y-3">
+                                <label class="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        x-model="settings.defaultFeatures.search"
+                                        class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+                                    >
+                                    <span class="ml-2">Web Search</span>
+                                </label>
+                                
+                                <label class="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        x-model="settings.defaultFeatures.reasoning"
+                                        class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+                                    >
+                                    <span class="ml-2">Reasoning</span>
+                                </label>
+                                
+                                <label class="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        x-model="settings.defaultFeatures.deep_research"
+                                        class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+                                    >
+                                    <span class="ml-2">Deep Research</span>
+                                </label>
+                                
+                                <label class="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        x-model="settings.defaultFeatures.document"
+                                        class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+                                    >
+                                    <span class="ml-2">Document Processing</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Theme Settings -->
+                        <div>
+                            <label class="block text-sm font-medium text-secondary-700 mb-2">Theme</label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div 
+                                    @click="settings.theme = 'light'"
+                                    class="cursor-pointer border rounded-lg p-3 flex items-center"
+                                    :class="settings.theme === 'light' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-secondary-200 hover:bg-secondary-50'"
+                                >
+                                    <input 
+                                        type="radio" 
+                                        name="theme" 
+                                        value="light" 
+                                        x-model="settings.theme"
+                                        class="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300"
+                                    >
+                                    <span class="flex items-center">
+                                        <i class="fas fa-sun mr-2"></i>
+                                        Light
+                                    </span>
+                                </div>
+                                
+                                <div 
+                                    @click="settings.theme = 'dark'"
+                                    class="cursor-pointer border rounded-lg p-3 flex items-center"
+                                    :class="settings.theme === 'dark' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-secondary-200 hover:bg-secondary-50'"
+                                >
+                                    <input 
+                                        type="radio" 
+                                        name="theme" 
+                                        value="dark" 
+                                        x-model="settings.theme"
+                                        class="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300"
+                                    >
+                                    <span class="flex items-center">
+                                        <i class="fas fa-moon mr-2"></i>
+                                        Dark
+                                    </span>
+                                </div>
+                                
+                                <div 
+                                    @click="settings.theme = 'system'"
+                                    class="cursor-pointer border rounded-lg p-3 flex items-center"
+                                    :class="settings.theme === 'system' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-secondary-200 hover:bg-secondary-50'"
+                                >
+                                    <input 
+                                        type="radio" 
+                                        name="theme" 
+                                        value="system" 
+                                        x-model="settings.theme"
+                                        class="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300"
+                                    >
+                                    <span class="flex items-center">
+                                        <i class="fas fa-desktop mr-2"></i>
+                                        System
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <button 
+                                type="submit" 
+                                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                            >
+                                Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toast Notifications -->
+        <div 
+            class="fixed bottom-4 right-4 z-50"
+            x-data="notifications()"
+            @notification.window="addNotification($event.detail.message, $event.detail.type, $event.detail.id)"
+        >
+            <template x-for="notification in notifications" :key="notification.id">
+                <div 
+                    class="mb-2 p-4 rounded-lg shadow-lg flex items-center"
+                    :class="getBackgroundClass(notification.type)"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 transform translate-x-8"
+                    x-transition:enter-end="opacity-100 transform translate-x-0"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 transform translate-x-0"
+                    x-transition:leave-end="opacity-0 transform translate-x-8"
+                >
+                    <i :class="getIconClass(notification.type)" class="mr-3 text-lg"></i>
+                    <span x-text="notification.message"></span>
+                    <button 
+                        @click="removeNotification(notification.id)"
+                        class="ml-4 text-current opacity-70 hover:opacity-100"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </template>
+        </div>
+    </div>
+    
+    <script>
+        function settingsApp() {
+            return {
+                // Auth state
+                isAuthenticated: false,
+                isCheckingAuth: true,
+                
+                // Settings
+                settings: {
+                    defaultModel: 'openai/gpt-4o',
+                    defaultFeatures: {
+                        search: false,
+                        reasoning: true,
+                        deep_research: false,
+                        document: false
+                    },
+                    theme: 'light'
+                },
+                
+                // Model data
+                modelCategories: [],
+                isLoadingModels: false,
+                
+                settingsSuccess: null,
+                
+                async initialize() {
+                    try {
+                        this.isCheckingAuth = true;
+                        
+                        // Check authentication status
+                        const response = await fetch('/auth/me', {
+                            method: 'GET',
+                            credentials: 'include'
+                        });
+                        
+                        if (response.ok) {
+                            this.isAuthenticated = true;
+                            
+                            // Load settings from localStorage
+                            const savedSettings = localStorage.getItem('triton_settings');
+                            if (savedSettings) {
+                                this.settings = JSON.parse(savedSettings);
+                                
+                                // Ensure document feature flag exists (backward compatibility)
+                                if (!this.settings.defaultFeatures.hasOwnProperty('document')) {
+                                    this.settings.defaultFeatures.document = false;
+                                }
+                                
+                                // Ensure deep_research feature flag exists
+                                if (!this.settings.defaultFeatures.hasOwnProperty('deep_research')) {
+                                    this.settings.defaultFeatures.deep_research = false;
+                                }
+                            }
+                            
+                            // Apply current theme from settings
+                            this.applyTheme(this.settings.theme);
+                            
+                            // Load available models from server
+                            await this.loadModels();
+                        } else {
+                            this.isAuthenticated = false;
+                        }
+                    } catch (error) {
+                        console.error('Initialization error:', error);
+                        this.isAuthenticated = false;
+                    } finally {
+                        this.isCheckingAuth = false;
+                    }
+                },
+                
+                async loadModels() {
+                    this.isLoadingModels = true;
+                    
+                    try {
+                        const response = await fetch('/models', {
+                            method: 'GET',
+                            credentials: 'include'
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            if (data.models) {
+                                // Transform backend model data to frontend format
+                                const modelsByProvider = {};
+                                
+                                // Group models by provider
+                                Object.entries(data.models).forEach(([modelId, modelInfo]) => {
+                                    const provider = modelId.split('/')[0] || 'Default';
+                                    
+                                    if (!modelsByProvider[provider]) {
+                                        modelsByProvider[provider] = [];
+                                    }
+                                    
+                                    modelsByProvider[provider].push({
+                                        id: modelId,
+                                        name: modelInfo.name || modelId.split('/')[1] || modelId
+                                    });
+                                });
+                                
+                                // Convert to array format needed by the UI
+                                this.modelCategories = Object.entries(modelsByProvider).map(([provider, models]) => ({
+                                    name: this.formatProviderName(provider),
+                                    models: models
+                                }));
+                                
+                                // Make sure the selected model exists in available models
+                                if (!this.isModelAvailable(this.settings.defaultModel) && this.modelCategories.length > 0) {
+                                    // Select the first available model
+                                    this.settings.defaultModel = this.modelCategories[0].models[0].id;
+                                }
+                            } else {
+                                // Fallback to default models if API returns no models
+                                this.setFallbackModels();
+                            }
+                        } else {
+                            // API error, use fallback models
+                            this.setFallbackModels();
+                        }
+                    } catch (error) {
+                        console.error('Error loading models:', error);
+                        this.setFallbackModels();
+                    } finally {
+                        this.isLoadingModels = false;
+                    }
+                },
+                
+                setFallbackModels() {
+                    this.modelCategories = [
+                        {
+                            name: "OpenAI Models",
+                            models: [
+                                { id: "openai/gpt-4o", name: "GPT-4o" },
+                                { id: "openai/gpt-4.1", name: "GPT-4.1" },
+                                { id: "openai/o4-mini", name: "o4 Mini" },
+                                { id: "openai/o3", name: "o3" }
+                            ]
+                        },
+                    
+                        {
+                            name: "Microsoft Models",
+                            models: [
+                                { id: "microsoft/MAI-DS-R1", name: "Microsoft MAI-DS-R1" },
+                                { id: "microsoft/Phi-4-reasoning", name: "Phi-4 Reasoning" },
+                                { id: "microsoft/Phi-4-mini-reasoning", name: "Phi-4 Mini Reasoning" }
+                            ]
+                        },
+                        {
+                            name: "Other Models",
+                            models: [
+                                { id: "meta/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick" },
+                                { id: "cohere/cohere-command-a", name: "Cohere Command A" },
+                                { id: "cohere/Cohere-command-r-plus-08-2024", name: "Cohere Command R+ (2024)" }
+                            ]
+                        }
+                    ];
+                },
+                
+                formatProviderName(provider) {
+                    const capitalizedProvider = provider.charAt(0).toUpperCase() + provider.slice(1);
+                    
+                    // Map known providers to better display names
+                    const providerNames = {
+                        'openai': 'OpenAI',
+                        'anthropic': 'Anthropic',
+                        'azure': 'Azure OpenAI',
+                        'microsoft': 'Microsoft',
+                        'meta': 'Meta AI',
+                        'llama': 'Llama',
+                        'mistral': 'Mistral AI',
+                        'cohere': 'Cohere'
+                    };
+                    
+                    return providerNames[provider.toLowerCase()] || capitalizedProvider;
+                },
+                
+                isModelAvailable(modelId) {
+                    return this.modelCategories.some(category => 
+                        category.models.some(model => model.id === modelId)
+                    );
+                },
+                
+                applyTheme(theme) {
+                    // Apply theme to the document
+                    const root = document.documentElement;
+                    
+                    // First, remove any existing theme classes
+                    root.classList.remove('theme-light', 'theme-dark');
+                    
+                    if (theme === 'system') {
+                        // Use system preference
+                        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        root.classList.add(prefersDark ? 'theme-dark' : 'theme-light');
+                    } else {
+                        // Use specific theme
+                        root.classList.add(`theme-${theme}`);
+                    }
+                    
+                    // Store the current theme for other pages to use
+                    localStorage.setItem('currentTheme', theme);
+                },
+                
+                saveSettings() {
+                    // Save to localStorage
+                    localStorage.setItem('triton_settings', JSON.stringify(this.settings));
+                    
+                    // Apply theme immediately
+                    this.applyTheme(this.settings.theme);
+                    
+                    // Show success message
+                    this.settingsSuccess = 'Settings saved successfully';
+                    
+                    // Clear success message after 3 seconds
+                    setTimeout(() => {
+                        this.settingsSuccess = null;
+                    }, 3000);
+                    
+                    // Dispatch notification
+                    window.dispatchEvent(new CustomEvent('notification', {
+                        detail: {
+                            message: 'Settings saved successfully',
+                            type: 'success',
+                            id: Date.now()
+                        }
+                    }));
+                }
+            };
+        }
+    </script>
+</body>
+</html>

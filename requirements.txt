@@ -1,0 +1,37 @@
+# Core dependencies
+flask
+werkzeug
+flask-cors
+waitress
+click
+python-dotenv
+
+# Authentication libraries
+bcrypt
+PyJWT
+
+# Azure AI SDK
+azure.ai.inference
+
+# Database
+# SQLite is included in Python standard library
+
+# HTTP/Async libraries
+aiohttp
+requests
+
+# Image and document processing
+pytesseract
+pdf2image
+PyMuPDF
+
+# AI tools
+numpy
+faiss-cpu
+google-generativeai
+
+# Utilities
+tenacity
+beautifulsoup4
+markdown
+psutil
