@@ -169,6 +169,54 @@
     background-color: var(--primary-600, #0284c7);
 }
 
+/* Collapsed panel indicator styles */
+.panel-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--color-secondary-500);
+}
+
+/* Panel transition styles */
+.panel-transition-enter-active,
+.panel-transition-leave-active {
+    transition: all 0.2s ease-in-out;
+    max-height: 500px;
+    overflow: hidden;
+}
+
+.panel-transition-enter-from,
+.panel-transition-leave-to {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+/* Add styles for the compact indicators shown when panel is collapsed */
+.feature-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    background-color: var(--color-primary-50);
+    color: var(--color-primary-700);
+    margin-right: 0.25rem;
+}
+
+.feature-pill i {
+    margin-right: 0.25rem;
+    font-size: 0.625rem;
+}
+
+/* Make the model selection panel sticky at the top */
+.model-panel-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: white;
+}
+
 /* Theme-based styling for light/dark modes */
 :root {
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

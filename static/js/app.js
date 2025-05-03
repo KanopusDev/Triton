@@ -115,6 +115,18 @@ function chatApp() {
             } finally {
                 this.isCheckingAuth = false;
             }
+            
+            // Add keyboard shortcut listener for model panel toggle
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+M to toggle model panel
+                if (e.ctrlKey && e.key === 'm') {
+                    e.preventDefault();
+                    const panelState = localStorage.getItem('modelPanelExpanded') === 'false' ? false : true;
+                    localStorage.setItem('modelPanelExpanded', !panelState);
+                    // Force Alpine to re-evaluate the panel state
+                    document.querySelector('#modelFeaturesPanel')?.dispatchEvent(new CustomEvent('panel-toggle'));
+                }
+            });
         },
         
         /**

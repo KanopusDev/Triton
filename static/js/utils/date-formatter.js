@@ -115,56 +115,6 @@ const DateFormatter = {
     },
     
     /**
-     * Format relative time (e.g., "2 hours ago", "just now")
-     * 
-     * @param {string} dateString - ISO date string
-     * @param {Object} options - Formatting options
-     * @returns {string} Relative time string
-     */
-    formatRelativeTime(dateString, options = {}) {
-        if (!dateString) return options.emptyText || '';
-        
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffSec = diffMs / 1000;
-            const diffMin = diffSec / 60;
-            const diffHour = diffMin / 60;
-            const diffDays = diffHour / 24;
-            
-            // Just now (less than 1 minute ago)
-            if (diffSec < 60) {
-                return 'Just now';
-            }
-            
-            // Minutes ago
-            if (diffMin < 60) {
-                const minutes = Math.floor(diffMin);
-                return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
-            }
-            
-            // Hours ago
-            if (diffHour < 24) {
-                const hours = Math.floor(diffHour);
-                return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-            }
-            
-            // Days ago (up to 7 days)
-            if (diffDays < 7) {
-                const days = Math.floor(diffDays);
-                return `${days} day${days !== 1 ? 's' : ''} ago`;
-            }
-            
-            // Fall back to standard date format
-            return this.formatDate(dateString, options);
-        } catch (error) {
-            console.error('Error formatting relative time:', error);
-            return options.errorText || dateString;
-        }
-    },
-    
-    /**
      * Check if two dates are the same calendar day
      * 
      * @param {Date} date1 - First date
