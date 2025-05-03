@@ -42,6 +42,12 @@ from flask.cli import with_appcontext
 import re
 import html
 from bs4.element import Comment
+import mimetypes
+import random
+
+# Ensure proper MIME types for font files
+mimetypes.add_type('font/woff2', '.woff2')
+mimetypes.add_type('font/ttf', '.ttf')
 
 # Configure logging
 logging.basicConfig(
@@ -98,6 +104,15 @@ def after_request(response):
     response.headers.add('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
 
+# Add a special route to serve font files with proper headers
+@app.route('/static/fonts/<path:filename>')
+def serve_font(filename):
+    """Serve font files with proper cache headers"""
+    response = app.send_static_file(f'fonts/{filename}')
+    # Cache fonts for 1 year (far future expiry)
+    response.headers['Cache-Control'] = 'public, max-age=31536000'
+    return response
+
 # User roles and permissions
 class UserRole:
     """User role definitions"""
@@ -113,16 +128,66 @@ class UserRole:
         }
         return permissions.get(role, [])
 
-# Extended database initialization to include authentication tables
+# Enhanced database connection with timeout, retry, and proper transaction control
 @contextmanager
-def get_db_connection():
-    """Context manager for database connections"""
-    conn = sqlite3.connect(app.config["DATABASE_PATH"])
-    conn.row_factory = sqlite3.Row
+def get_db_connection(timeout=20, isolation_level=None):
+    """Context manager for database connections with improved lock handling
+    
+    Args:
+        timeout: Number of seconds to wait for the database lock to be released
+        isolation_level: SQLite isolation level (None = autocommit mode)
+    """
+    conn = None
+    retry_count = 0
+    max_retries = 3
+    
+    while retry_count < max_retries:
+        try:
+            conn = sqlite3.connect(app.config["DATABASE_PATH"], timeout=timeout)
+            conn.row_factory = sqlite3.Row
+            
+            # Set isolation level if specified (controls transaction behavior)
+            if isolation_level is not None:
+                conn.isolation_level = isolation_level
+                
+            # Enable foreign keys
+            conn.execute("PRAGMA foreign_keys = ON")
+            
+            # Set busy timeout (milliseconds)
+            conn.execute(f"PRAGMA busy_timeout = {timeout * 1000}")
+            
+            break
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e) and retry_count < max_retries - 1:
+                retry_count += 1
+                # Exponential backoff with jitter for retries
+                sleep_time = (2 ** retry_count) * 0.1 + random.uniform(0, 0.1)
+                logger.warning(f"Database locked, retrying in {sleep_time:.2f}s (attempt {retry_count}/{max_retries})")
+                time.sleep(sleep_time)
+            else:
+                raise
+    
     try:
         yield conn
+    except sqlite3.OperationalError as e:
+        if conn:
+            # Always rollback on error to release locks
+            conn.rollback()
+            
+        if "database is locked" in str(e):
+            logger.error(f"Database lock encountered during operation: {str(e)}")
+            raise RuntimeError("Database is temporarily busy. Please try again.") from e
+        else:
+            raise
+    except Exception:
+        if conn:
+            # Always rollback on any exception
+            conn.rollback()
+        raise
     finally:
-        conn.close()
+        if conn:
+            # Ensure connection is closed to release locks
+            conn.close()
 
 def init_db():
     """Initialize the database with required tables"""
@@ -385,28 +450,47 @@ def create_invitation(email, created_by):
     
     return token
 
-def verify_invitation(email, token):
-    """Verify an invitation token and return the invitation_id if valid"""
-    with get_db_connection() as conn:
-        invitation = conn.execute(
-            """SELECT invitation_id FROM invitations 
-            WHERE email = ? AND token = ? AND used = 0 AND expires_at > ?""",
-            (email.lower(), token, datetime.utcnow().isoformat())
-        ).fetchone()
-        
-        if invitation:
-            return invitation["invitation_id"]
-    
-    return None
-
+# Enhanced function to mark invitation as used with robust retry mechanism
 def mark_invitation_used(invitation_id):
-    """Mark an invitation as used"""
-    with get_db_connection() as conn:
-        conn.execute(
-            "UPDATE invitations SET used = 1 WHERE invitation_id = ?",
-            (invitation_id,)
-        )
-        conn.commit()
+    """Mark an invitation as used with automatic retries and transaction isolation"""
+    retries = 3
+    retry_delay = 0.5
+    
+    for attempt in range(retries):
+        try:
+            # Use explicit transaction with write-ahead logging mode
+            with get_db_connection(timeout=30, isolation_level="IMMEDIATE") as conn:
+                # Set WAL journal mode for better concurrency
+                conn.execute("PRAGMA journal_mode = WAL")
+                
+                # Attempt the update with proper transaction handling
+                conn.execute(
+                    "UPDATE invitations SET used = 1 WHERE invitation_id = ?",
+                    (invitation_id,)
+                )
+                conn.commit()
+                logger.info(f"Successfully marked invitation {invitation_id} as used")
+                return True
+        except (sqlite3.OperationalError, RuntimeError) as e:
+            error_message = str(e)
+            if "database is locked" in error_message or "temporarily busy" in error_message:
+                if attempt < retries - 1:
+                    # Exponential backoff with jitter
+                    sleep_time = retry_delay * (2 ** attempt) + random.uniform(0, 0.1)
+                    logger.warning(f"Retrying mark_invitation_used in {sleep_time:.2f}s (attempt {attempt+1}/{retries})")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"Failed to mark invitation as used after {retries} attempts: {error_message}")
+                    # Return False instead of raising to allow registration to continue
+                    return False
+            else:
+                logger.error(f"Non-locking error in mark_invitation_used: {error_message}")
+                raise
+        except Exception as e:
+            logger.error(f"Error marking invitation as used: {str(e)}")
+            raise
+    
+    return False
 
 # Authentication decorators (middleware)
 def login_required(f):
@@ -439,6 +523,137 @@ def admin_required(f):
         return f(*args, **kwargs)
     
     return decorated_function
+
+# Redesigned registration endpoint with improved transaction handling
+@app.route('/auth/register', methods=['POST'])
+def register():
+    """User registration endpoint with improved transaction handling for concurrent access"""
+    try:
+        data = request.json
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        invitation_token = data.get('invitation_token', '')
+        
+        # Validate inputs
+        if not username or not email or not password or not invitation_token:
+            return jsonify({"error": "All fields are required"}), 400
+        
+        if len(password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters long"}), 400
+        
+        # Step 1: Verify invitation in a separate transaction
+        invitation_id = None
+        try:
+            with get_db_connection(timeout=20) as conn:
+                invitation = conn.execute(
+                    """SELECT invitation_id FROM invitations 
+                    WHERE email = ? AND token = ? AND used = 0 AND expires_at > ?""",
+                    (email.lower(), invitation_token, datetime.utcnow().isoformat())
+                ).fetchone()
+                
+                if invitation:
+                    invitation_id = invitation["invitation_id"]
+        except Exception as verify_error:
+            logger.error(f"Error verifying invitation: {str(verify_error)}")
+            return jsonify({"error": "Could not verify invitation. Please try again."}), 500
+                
+        if not invitation_id:
+            return jsonify({"error": "Invalid or expired invitation"}), 403
+        
+        # Step 2: Check if user with email already exists in a separate transaction
+        try:
+            with get_db_connection(timeout=20) as conn:
+                existing_user = conn.execute(
+                    "SELECT user_id FROM users WHERE email = ?", 
+                    (email,)
+                ).fetchone()
+                
+                if existing_user:
+                    return jsonify({"error": "An account with this email already exists"}), 409
+        except Exception as user_check_error:
+            logger.error(f"Error checking existing user: {str(user_check_error)}")
+            return jsonify({"error": "Could not verify email availability. Please try again."}), 500
+        
+        # Step 3: Create user in a dedicated transaction with proper isolation
+        user_id = str(uuid.uuid4())
+        password_hash = hash_password(password)
+        
+        try:
+            with get_db_connection(timeout=30, isolation_level="IMMEDIATE") as conn:
+                conn.execute(
+                    """INSERT INTO users 
+                    (user_id, username, email, password_hash, role, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        user_id,
+                        username,
+                        email,
+                        password_hash,
+                        UserRole.USER,  # Default role is regular user
+                        datetime.utcnow().isoformat()
+                    )
+                )
+                conn.commit()
+                logger.info(f"Successfully created user {username} with ID {user_id}")
+        except sqlite3.IntegrityError as integrity_error:
+            # Handle race condition where user was created between our check and insert
+            if "UNIQUE constraint failed: users.email" in str(integrity_error):
+                return jsonify({"error": "An account with this email already exists"}), 409
+            raise
+        except Exception as user_creation_error:
+            logger.error(f"Error creating user: {str(user_creation_error)}")
+            return jsonify({"error": "Could not create user account. Please try again."}), 500
+        
+        # Step 4: Mark invitation as used in a separate transaction with retries
+        # This is now a non-blocking operation - we log but don't fail if it doesn't work
+        invitation_marked = mark_invitation_used(invitation_id)
+        if not invitation_marked:
+            logger.warning(f"Could not mark invitation {invitation_id} as used, but user was created successfully")
+        
+        # Step 5: Create session for new user
+        try:
+            request_info = {
+                'ip': request.remote_addr,
+                'user_agent': request.headers.get('User-Agent')
+            }
+            session_token = create_session(user_id, request_info)
+            
+            # Generate JWT for API access
+            jwt_token = generate_jwt_token(user_id)
+            
+            # Set HTTP-only cookie
+            session['auth_token'] = session_token
+            
+            return jsonify({
+                "status": "success",
+                "message": "Registration successful",
+                "token": jwt_token,
+                "user": {
+                    "user_id": user_id,
+                    "username": username,
+                    "email": email,
+                    "role": UserRole.USER,
+                    "created_at": datetime.utcnow().isoformat()
+                }
+            })
+        except Exception as session_error:
+            logger.error(f"Error creating session after registration: {str(session_error)}")
+            # User is created but session failed - return success with message
+            return jsonify({
+                "status": "partial_success",
+                "message": "Account created successfully but session creation failed. Please try logging in.",
+                "user": {
+                    "email": email
+                }
+            })
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": "Registration failed. Please try again later."}), 500
 
 # Authentication endpoints
 @app.route('/auth/login', methods=['POST'])
@@ -526,91 +741,6 @@ def logout():
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
         return jsonify({"error": "Logout failed"}), 500
-
-@app.route('/auth/register', methods=['POST'])
-def register():
-    """User registration endpoint (requires invitation)"""
-    try:
-        data = request.json
-        
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-        
-        username = data.get('username', '').strip()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        invitation_token = data.get('invitation_token', '')
-        
-        # Validate inputs
-        if not username or not email or not password or not invitation_token:
-            return jsonify({"error": "All fields are required"}), 400
-        
-        if len(password) < 8:
-            return jsonify({"error": "Password must be at least 8 characters long"}), 400
-        
-        # Verify the invitation
-        invitation_id = verify_invitation(email, invitation_token)
-        if not invitation_id:
-            return jsonify({"error": "Invalid or expired invitation"}), 403
-        
-        # Check if user with email already exists
-        existing_user = get_user_by_email(email)
-        if existing_user:
-            return jsonify({"error": "An account with this email already exists"}), 409
-        
-        # Create new user
-        user_id = str(uuid.uuid4())
-        password_hash = hash_password(password)
-        
-        with get_db_connection() as conn:
-            conn.execute(
-                """INSERT INTO users 
-                (user_id, username, email, password_hash, role, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?)""",
-                (
-                    user_id,
-                    username,
-                    email,
-                    password_hash,
-                    UserRole.USER,  # Default role is regular user
-                    datetime.utcnow().isoformat()
-                )
-            )
-            
-            # Mark invitation as used
-            mark_invitation_used(invitation_id)
-            
-            conn.commit()
-        
-        # Create session for new user
-        request_info = {
-            'ip': request.remote_addr,
-            'user_agent': request.headers.get('User-Agent')
-        }
-        session_token = create_session(user_id, request_info)
-        
-        # Generate JWT for API access
-        jwt_token = generate_jwt_token(user_id)
-        
-        # Set HTTP-only cookie
-        session['auth_token'] = session_token
-        
-        return jsonify({
-            "status": "success",
-            "message": "Registration successful",
-            "token": jwt_token,
-            "user": {
-                "user_id": user_id,
-                "username": username,
-                "email": email,
-                "role": UserRole.USER,
-                "created_at": datetime.utcnow().isoformat()
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Registration error: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"error": "Registration failed"}), 500
 
 @app.route('/auth/me', methods=['GET'])
 @login_required
@@ -2555,7 +2685,7 @@ def delete_conversation(conversation_id):
             })
     
     except Exception as e:
-        logger.error(f"Delete conversation error: {str(e)}\n{traceback.format_exc()}")
+        logger.error(f"Delete conversation error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # Add profile, settings and admin routes
