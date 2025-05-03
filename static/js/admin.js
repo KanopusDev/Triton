@@ -1,6 +1,6 @@
 /**
  * Admin Panel Application
- * Handles administrative functions for Triton AI
+ * Enterprise-grade admin functionality for Triton AI
  */
 
 document.addEventListener('alpine:init', () => {
@@ -9,7 +9,7 @@ document.addEventListener('alpine:init', () => {
 
 function adminPanel() {
     return {
-        // Authentication and user state
+        // Authentication state
         isAuthenticated: false,
         isCheckingAuth: true,
         userInitials: '',
@@ -17,8 +17,20 @@ function adminPanel() {
         userEmail: '',
         userRole: '',
         
-        // Active tab
-        activeTab: 'overview', // overview, users, invitations, documents, logs, config
+        // UI state
+        activeTab: 'overview',
+        isLoading: false,
+        
+        // Modals
+        showEditUserModal: false,
+        confirmModal: {
+            show: false,
+            title: '',
+            message: '',
+            action: null,
+            confirmText: 'Confirm',
+            data: null
+        },
         
         // Overview stats
         stats: {
@@ -28,11 +40,11 @@ function adminPanel() {
             totalMessages: 0,
             documentsUploaded: 0
         },
+        isLoadingStats: false,
         
         // Users management
         users: [],
         isLoadingUsers: false,
-        showEditUserModal: false,
         selectedUser: null,
         userForm: {
             username: '',
@@ -40,8 +52,8 @@ function adminPanel() {
             role: 'user',
             active: true
         },
-        userSuccess: null,
         userError: null,
+        userSuccess: null,
         
         // Invitations management
         invitations: [],
@@ -53,99 +65,93 @@ function adminPanel() {
         documents: [],
         isLoadingDocuments: false,
         
-        // System logs
+        // Logs management
         logs: [],
         isLoadingLogs: false,
         logLevel: 'all',
         
-        // System configuration
-        configForm: {
-            azureEndpoint: '',
-            azureApiKey: '',
-            maxUploadSize: 50,
-            defaultSearchEngine: 'google',
-            logLevel: 'INFO'
-        },
+        // Config management
+        config: {},
         isLoadingConfig: false,
-        configSuccess: null,
+        configForm: {},
         configError: null,
-        
-        // Confirmation modal
-        confirmModal: {
-            show: false,
-            title: '',
-            message: '',
-            action: null,
-            param: null,
-            confirmText: 'Confirm'
-        },
+        configSuccess: null,
         
         /**
          * Initialize the admin panel
          */
         async initialize() {
             try {
-                this.isCheckingAuth = true;
+                // Check authentication
+                const user = await this.checkAuth();
                 
-                // Check authentication status
-                const response = await fetch('/auth/me', {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Check if user is admin
-                    if (data.user.role !== 'admin') {
-                        this.isAuthenticated = false;
-                        return;
-                    }
-                    
-                    this.isAuthenticated = true;
-                    this.userName = data.user.username;
-                    this.userEmail = data.user.email;
-                    this.userRole = data.user.role;
-                    this.userInitials = this.getInitials(data.user.username);
-                    
-                    // Load data for active tab
-                    await this.loadTabData(this.activeTab);
-                } else {
+                if (!user) {
                     this.isAuthenticated = false;
+                    this.isCheckingAuth = false;
+                    return;
                 }
+                
+                if (user.role !== 'admin') {
+                    this.isAuthenticated = false;
+                    this.isCheckingAuth = false;
+                    
+                    // Display error message for non-admin users
+                    this.dispatchNotification('Admin access required', 'error');
+                    
+                    // Redirect to home page after delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                    
+                    return;
+                }
+                
+                // Set user info
+                this.userInitials = this.getInitials(user.username);
+                this.userName = user.username;
+                this.userEmail = user.email;
+                this.userRole = user.role;
+                
+                this.isAuthenticated = true;
+                this.isCheckingAuth = false;
+                
+                // Load initial data
+                this.loadOverviewStats();
+                
+                // Set up charts after DOM is ready
+                this.$nextTick(() => {
+                    this.setupCharts();
+                });
             } catch (error) {
                 console.error('Initialization error:', error);
                 this.isAuthenticated = false;
-            } finally {
                 this.isCheckingAuth = false;
+                this.dispatchNotification('Failed to initialize admin panel', 'error');
             }
         },
         
         /**
-         * Load data for the active tab
+         * Check if user is authenticated
          */
-        async loadTabData(tab) {
-            this.activeTab = tab;
-            
-            switch (tab) {
-                case 'overview':
-                    await this.loadOverviewStats();
-                    break;
-                case 'users':
-                    await this.loadUsers();
-                    break;
-                case 'invitations':
-                    await this.loadInvitations();
-                    break;
-                case 'documents':
-                    await this.loadDocuments();
-                    break;
-                case 'logs':
-                    await this.loadLogs();
-                    break;
-                case 'config':
-                    await this.loadSystemConfig();
-                    break;
+        async checkAuth() {
+            try {
+                const response = await fetch('/auth/me', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.user;
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('Auth check error:', error);
+                return null;
             }
         },
         
@@ -154,6 +160,7 @@ function adminPanel() {
          */
         getInitials(name) {
             if (!name) return '';
+            
             return name
                 .split(' ')
                 .map(part => part.charAt(0).toUpperCase())
@@ -162,155 +169,148 @@ function adminPanel() {
         },
         
         /**
-         * Load overview statistics
+         * Load overview stats and chart data
          */
         async loadOverviewStats() {
+            this.isLoadingStats = true;
+            
             try {
                 const response = await fetch('/admin/stats', {
                     method: 'GET',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
                     const data = await response.json();
+                    
+                    // Update stats
                     this.stats = data.stats;
                     
-                    // Initialize charts
+                    // Update charts
                     this.$nextTick(() => {
-                        this.initUserActivityChart(data.userActivity);
-                        this.initModelUsageChart(data.modelUsage);
+                        this.updateUserActivityChart(data.userActivity);
+                        this.updateModelUsageChart(data.modelUsage);
                     });
                 } else {
-                    // If API not implemented, use sample data for development
-                    this.stats = {
-                        totalUsers: 12,
-                        activeUsers: 8,
-                        totalConversations: 156,
-                        totalMessages: 1236,
-                        documentsUploaded: 24
-                    };
-                    
-                    // Initialize charts with sample data
-                    this.$nextTick(() => {
-                        this.initUserActivityChart([
-                            { date: '2023-09-01', count: 5 },
-                            { date: '2023-09-02', count: 7 },
-                            { date: '2023-09-03', count: 12 },
-                            { date: '2023-09-04', count: 8 },
-                            { date: '2023-09-05', count: 10 },
-                            { date: '2023-09-06', count: 15 },
-                            { date: '2023-09-07', count: 11 }
-                        ]);
-                        
-                        this.initModelUsageChart([
-                            { model: 'GPT-4o', count: 450 },
-                            { model: 'GPT-4', count: 300 },
-                            { model: 'GPT-3.5', count: 200 },
-                            { model: 'Claude-3', count: 150 },
-                            { model: 'Other', count: 100 }
-                        ]);
-                    });
+                    this.dispatchNotification('Failed to load overview stats', 'error');
                 }
             } catch (error) {
-                console.error('Stats loading error:', error);
-                this.dispatchNotification('Failed to load statistics', 'error');
+                console.error('Load stats error:', error);
+                this.dispatchNotification('Failed to load overview stats', 'error');
+            } finally {
+                this.isLoadingStats = false;
             }
         },
         
         /**
-         * Initialize user activity chart
+         * Set up charts
          */
-        initUserActivityChart(data) {
-            const ctx = document.getElementById('userActivityChart');
-            if (!ctx) return;
-            
-            // Destroy existing chart if it exists
-            if (this.userActivityChart) {
-                this.userActivityChart.destroy();
+        setupCharts() {
+            // User Activity Chart
+            const userActivityCtx = document.getElementById('userActivityChart');
+            if (userActivityCtx) {
+                this.userActivityChart = new Chart(userActivityCtx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Active Users',
+                            data: [],
+                            borderColor: '#0ea5e9',
+                            backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
             }
             
-            const labels = data.map(item => {
+            // Model Usage Chart
+            const modelUsageCtx = document.getElementById('modelUsageChart');
+            if (modelUsageCtx) {
+                this.modelUsageChart = new Chart(modelUsageCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            data: [],
+                            backgroundColor: [
+                                '#0ea5e9',
+                                '#3f5f87',
+                                '#22c55e',
+                                '#f59e0b',
+                                '#ef4444'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+            }
+        },
+        
+        /**
+         * Update user activity chart with new data
+         */
+        updateUserActivityChart(data) {
+            if (!this.userActivityChart) return;
+            
+            // Process data for chart
+            const dates = data.map(item => {
                 const date = new Date(item.date);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             });
             
-            const values = data.map(item => item.count);
+            const counts = data.map(item => item.count);
             
-            this.userActivityChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Active Users',
-                        data: values,
-                        borderColor: '#0ea5e9',
-                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
+            // Update chart
+            this.userActivityChart.data.labels = dates;
+            this.userActivityChart.data.datasets[0].data = counts;
+            this.userActivityChart.update();
         },
         
         /**
-         * Initialize model usage chart
+         * Update model usage chart with new data
          */
-        initModelUsageChart(data) {
-            const ctx = document.getElementById('modelUsageChart');
-            if (!ctx) return;
+        updateModelUsageChart(data) {
+            if (!this.modelUsageChart) return;
             
-            // Destroy existing chart if it exists
-            if (this.modelUsageChart) {
-                this.modelUsageChart.destroy();
-            }
-            
+            // Process data for chart
             const labels = data.map(item => item.model);
-            const values = data.map(item => item.count);
+            const counts = data.map(item => item.count);
             
-            this.modelUsageChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: [
-                            '#0ea5e9',
-                            '#3b82f6',
-                            '#6366f1',
-                            '#8b5cf6',
-                            '#a855f7'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
+            // Update chart
+            this.modelUsageChart.data.labels = labels;
+            this.modelUsageChart.data.datasets[0].data = counts;
+            this.modelUsageChart.update();
         },
         
         /**
@@ -318,21 +318,25 @@ function adminPanel() {
          */
         async loadUsers() {
             this.isLoadingUsers = true;
+            this.users = [];
             
             try {
                 const response = await fetch('/admin/users', {
                     method: 'GET',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
                     const data = await response.json();
-                    this.users = data.users || [];
+                    this.users = data.users;
                 } else {
                     this.dispatchNotification('Failed to load users', 'error');
                 }
             } catch (error) {
-                console.error('Error loading users:', error);
+                console.error('Load users error:', error);
                 this.dispatchNotification('Failed to load users', 'error');
             } finally {
                 this.isLoadingUsers = false;
@@ -340,207 +344,44 @@ function adminPanel() {
         },
         
         /**
-         * Load invitations list
-         */
-        async loadInvitations() {
-            this.isLoadingInvitations = true;
-            
-            try {
-                const response = await fetch('/admin/invitations', {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    this.invitations = data.invitations || [];
-                } else {
-                    // If API not yet implemented, use empty array
-                    this.invitations = [];
-                }
-            } catch (error) {
-                console.error('Error loading invitations:', error);
-                this.dispatchNotification('Failed to load invitations', 'error');
-            } finally {
-                this.isLoadingInvitations = false;
-            }
-        },
-        
-        /**
-         * Load documents list
-         */
-        async loadDocuments() {
-            this.isLoadingDocuments = true;
-            
-            try {
-                const response = await fetch('/admin/documents', {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    this.documents = data.documents || [];
-                } else {
-                    // If API not yet implemented, use empty array
-                    this.documents = [];
-                }
-            } catch (error) {
-                console.error('Error loading documents:', error);
-                this.dispatchNotification('Failed to load documents', 'error');
-            } finally {
-                this.isLoadingDocuments = false;
-            }
-        },
-        
-        /**
-         * Load system logs
-         */
-        async loadLogs() {
-            this.isLoadingLogs = true;
-            
-            try {
-                const response = await fetch(`/admin/logs?level=${this.logLevel}`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    this.logs = data.logs || [];
-                } else {
-                    // If API not yet implemented, use empty array
-                    this.logs = [];
-                }
-            } catch (error) {
-                console.error('Error loading logs:', error);
-                this.dispatchNotification('Failed to load logs', 'error');
-            } finally {
-                this.isLoadingLogs = false;
-            }
-        },
-        
-        /**
-         * Load system configuration
-         */
-        async loadSystemConfig() {
-            this.isLoadingConfig = true;
-            
-            try {
-                const response = await fetch('/admin/config', {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Don't populate API key for security reasons
-                    this.configForm = {
-                        azureEndpoint: data.config.azure_endpoint || '',
-                        azureApiKey: '', // Don't load API key
-                        maxUploadSize: data.config.max_upload_size || 50,
-                        defaultSearchEngine: data.config.default_search_engine || 'google',
-                        logLevel: data.config.log_level || 'INFO'
-                    };
-                } else {
-                    // Set default values if API not yet implemented
-                    this.configForm = {
-                        azureEndpoint: '',
-                        azureApiKey: '',
-                        maxUploadSize: 50,
-                        defaultSearchEngine: 'google',
-                        logLevel: 'INFO'
-                    };
-                }
-            } catch (error) {
-                console.error('Error loading config:', error);
-                this.dispatchNotification('Failed to load configuration', 'error');
-            } finally {
-                this.isLoadingConfig = false;
-            }
-        },
-        
-        /**
-         * Save system configuration
-         */
-        async saveSystemConfig() {
-            try {
-                const response = await fetch('/admin/config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        azure_endpoint: this.configForm.azureEndpoint,
-                        azure_api_key: this.configForm.azureApiKey || undefined, // Only include if provided
-                        max_upload_size: this.configForm.maxUploadSize,
-                        default_search_engine: this.configForm.defaultSearchEngine,
-                        log_level: this.configForm.logLevel
-                    })
-                });
-                
-                if (response.ok) {
-                    this.configSuccess = 'Configuration saved successfully';
-                    this.configError = null;
-                    
-                    // Clear API key field
-                    this.configForm.azureApiKey = '';
-                    
-                    // Clear success message after 3 seconds
-                    setTimeout(() => {
-                        this.configSuccess = null;
-                    }, 3000);
-                } else {
-                    const data = await response.json();
-                    this.configError = data.error || 'Failed to save configuration';
-                    this.configSuccess = null;
-                }
-            } catch (error) {
-                console.error('Error saving config:', error);
-                this.configError = 'An unexpected error occurred';
-                this.configSuccess = null;
-            }
-        },
-        
-        /**
-         * Open the user edit modal
+         * Open user edit modal
          */
         openEditUserModal(user = null) {
             this.selectedUser = user;
+            this.userError = null;
+            this.userSuccess = null;
             
             if (user) {
                 // Edit existing user
                 this.userForm = {
                     username: user.username,
-                    email: user.email,
                     role: user.role,
                     active: user.active
                 };
             } else {
-                // Create new user (invitation)
+                // New invitation
                 this.userForm = {
-                    username: '',
                     email: '',
-                    role: 'user',
-                    active: true
+                    role: 'user'
                 };
             }
             
-            this.userSuccess = null;
-            this.userError = null;
             this.showEditUserModal = true;
         },
         
         /**
-         * Save user changes or send invitation
+         * Save user or send invitation
          */
         async saveUser() {
-            try {
-                if (this.selectedUser) {
-                    // Update existing user
+            this.userError = null;
+            this.userSuccess = null;
+            
+            if (this.selectedUser) {
+                // Update existing user
+                try {
                     const response = await fetch(`/admin/users/${this.selectedUser.user_id}`, {
                         method: 'PUT',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json'
                         },
@@ -551,26 +392,31 @@ function adminPanel() {
                         })
                     });
                     
+                    const data = await response.json();
+                    
                     if (response.ok) {
                         this.userSuccess = 'User updated successfully';
-                        this.userError = null;
                         
-                        // Refresh user list
+                        // Reload users list
                         await this.loadUsers();
                         
-                        // Close modal after a delay
+                        // Close modal after delay
                         setTimeout(() => {
                             this.showEditUserModal = false;
                         }, 1500);
                     } else {
-                        const data = await response.json();
                         this.userError = data.error || 'Failed to update user';
-                        this.userSuccess = null;
                     }
-                } else {
-                    // Send invitation
+                } catch (error) {
+                    console.error('Update user error:', error);
+                    this.userError = 'Failed to update user';
+                }
+            } else {
+                // Send invitation
+                try {
                     const response = await fetch('/auth/invite', {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json'
                         },
@@ -579,41 +425,70 @@ function adminPanel() {
                         })
                     });
                     
+                    const data = await response.json();
+                    
                     if (response.ok) {
-                        this.userSuccess = `Invitation sent to ${this.userForm.email}`;
-                        this.userError = null;
+                        this.userSuccess = `Invitation sent successfully to ${this.userForm.email}`;
                         
-                        // Refresh invitation list
+                        // Reload invitations list
                         await this.loadInvitations();
                         
-                        // Close modal after a delay
+                        // Close modal after delay
                         setTimeout(() => {
                             this.showEditUserModal = false;
                         }, 1500);
                     } else {
-                        const data = await response.json();
                         this.userError = data.error || 'Failed to send invitation';
-                        this.userSuccess = null;
                     }
+                } catch (error) {
+                    console.error('Send invitation error:', error);
+                    this.userError = 'Failed to send invitation';
                 }
-            } catch (error) {
-                console.error('Error saving user:', error);
-                this.userError = 'An unexpected error occurred';
-                this.userSuccess = null;
             }
         },
         
         /**
-         * Send an invitation
+         * Load invitations list
+         */
+        async loadInvitations() {
+            this.isLoadingInvitations = true;
+            this.invitations = [];
+            
+            try {
+                const response = await fetch('/admin/invitations', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.invitations = data.invitations;
+                } else {
+                    this.dispatchNotification('Failed to load invitations', 'error');
+                }
+            } catch (error) {
+                console.error('Load invitations error:', error);
+                this.dispatchNotification('Failed to load invitations', 'error');
+            } finally {
+                this.isLoadingInvitations = false;
+            }
+        },
+        
+        /**
+         * Send a new invitation
          */
         async sendInvitation() {
-            if (!this.inviteEmail) return;
+            if (!this.inviteEmail || this.isInviting) return;
             
             this.isInviting = true;
             
             try {
                 const response = await fetch('/auth/invite', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -622,18 +497,21 @@ function adminPanel() {
                     })
                 });
                 
+                const data = await response.json();
+                
                 if (response.ok) {
-                    this.dispatchNotification(`Invitation sent to ${this.inviteEmail}`, 'success');
-                    this.inviteEmail = ''; // Clear the field
+                    this.dispatchNotification(`Invitation sent successfully to ${this.inviteEmail}`, 'success');
                     
-                    // Refresh invitation list
+                    // Clear form
+                    this.inviteEmail = '';
+                    
+                    // Reload invitations
                     await this.loadInvitations();
                 } else {
-                    const data = await response.json();
                     this.dispatchNotification(data.error || 'Failed to send invitation', 'error');
                 }
             } catch (error) {
-                console.error('Error sending invitation:', error);
+                console.error('Send invitation error:', error);
                 this.dispatchNotification('Failed to send invitation', 'error');
             } finally {
                 this.isInviting = false;
@@ -641,117 +519,164 @@ function adminPanel() {
         },
         
         /**
-         * Show confirmation modal
+         * Delete invitation confirmation
          */
-        confirmAction(action, title, message, param = null) {
-            this.confirmModal = {
-                show: true,
-                title: title,
-                message: message,
-                action: action,
-                param: param,
-                confirmText: action === 'deleteUser' ? 'Delete' : 'Confirm'
-            };
+        confirmDeleteInvitation(invitation) {
+            this.confirmAction(
+                () => this.deleteInvitation(invitation.invitation_id),
+                'Delete Invitation',
+                `Are you sure you want to delete the invitation for ${invitation.email}?`,
+                'Delete'
+            );
         },
         
         /**
-         * Execute the confirmed action
+         * Delete invitation
          */
-        async executeConfirmedAction() {
-            const { action, param } = this.confirmModal;
-            
-            // Hide the modal
-            this.confirmModal.show = false;
-            
-            switch (action) {
-                case 'deleteUser':
-                    await this.deleteUser(param);
-                    break;
-                case 'revokeInvitation':
-                    await this.revokeInvitation(param);
-                    break;
-                case 'deleteDocument':
-                    await this.deleteDocument(param);
-                    break;
-                case 'clearLogs':
-                    await this.clearLogs();
-                    break;
-            }
-        },
-        
-        /**
-         * Delete a user
-         */
-        async deleteUser(userId) {
+        async deleteInvitation(invitation_id) {
             try {
-                const response = await fetch(`/admin/users/${userId}`, {
+                const response = await fetch(`/admin/invitations/${invitation_id}`, {
                     method: 'DELETE',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
-                    this.dispatchNotification('User deleted successfully', 'success');
-                    
-                    // Remove from local list
-                    this.users = this.users.filter(user => user.user_id !== userId);
+                    this.dispatchNotification('Invitation deleted successfully', 'success');
+                    await this.loadInvitations();
                 } else {
                     const data = await response.json();
-                    this.dispatchNotification(data.error || 'Failed to delete user', 'error');
+                    this.dispatchNotification(data.error || 'Failed to delete invitation', 'error');
                 }
             } catch (error) {
-                console.error('Error deleting user:', error);
-                this.dispatchNotification('Failed to delete user', 'error');
+                console.error('Delete invitation error:', error);
+                this.dispatchNotification('Failed to delete invitation', 'error');
             }
         },
         
         /**
-         * Revoke an invitation
+         * Load documents list
          */
-        async revokeInvitation(invitationId) {
+        async loadDocuments() {
+            this.isLoadingDocuments = true;
+            this.documents = [];
+            
             try {
-                const response = await fetch(`/admin/invitations/${invitationId}`, {
-                    method: 'DELETE',
-                    credentials: 'include'
+                const response = await fetch('/admin/documents', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
-                    this.dispatchNotification('Invitation revoked successfully', 'success');
-                    
-                    // Remove from local list
-                    this.invitations = this.invitations.filter(inv => inv.invitation_id !== invitationId);
-                } else {
                     const data = await response.json();
-                    this.dispatchNotification(data.error || 'Failed to revoke invitation', 'error');
+                    this.documents = data.documents;
+                } else {
+                    this.dispatchNotification('Failed to load documents', 'error');
                 }
             } catch (error) {
-                console.error('Error revoking invitation:', error);
-                this.dispatchNotification('Failed to revoke invitation', 'error');
+                console.error('Load documents error:', error);
+                this.dispatchNotification('Failed to load documents', 'error');
+            } finally {
+                this.isLoadingDocuments = false;
             }
         },
         
         /**
-         * Delete a document
+         * Delete document confirmation
          */
-        async deleteDocument(docId) {
+        confirmDeleteDocument(document) {
+            this.confirmAction(
+                () => this.deleteDocument(document.doc_id),
+                'Delete Document',
+                `Are you sure you want to delete the document "${document.name}"?`,
+                'Delete'
+            );
+        },
+        
+        /**
+         * Delete document
+         */
+        async deleteDocument(doc_id) {
             try {
-                const response = await fetch(`/admin/documents/${docId}`, {
+                const response = await fetch(`/admin/documents/${doc_id}`, {
                     method: 'DELETE',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
                     this.dispatchNotification('Document deleted successfully', 'success');
-                    
-                    // Remove from local list
-                    this.documents = this.documents.filter(doc => doc.doc_id !== docId);
+                    await this.loadDocuments();
                 } else {
                     const data = await response.json();
                     this.dispatchNotification(data.error || 'Failed to delete document', 'error');
                 }
             } catch (error) {
-                console.error('Error deleting document:', error);
+                console.error('Delete document error:', error);
                 this.dispatchNotification('Failed to delete document', 'error');
             }
+        },
+        
+        /**
+         * Format file size for display
+         */
+        formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+        
+        /**
+         * Load system logs
+         */
+        async loadLogs() {
+            this.isLoadingLogs = true;
+            this.logs = [];
+            
+            try {
+                const response = await fetch(`/admin/logs?level=${this.logLevel}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.logs = data.logs;
+                } else {
+                    this.dispatchNotification('Failed to load logs', 'error');
+                }
+            } catch (error) {
+                console.error('Load logs error:', error);
+                this.dispatchNotification('Failed to load logs', 'error');
+            } finally {
+                this.isLoadingLogs = false;
+            }
+        },
+        
+        /**
+         * Clear logs confirmation
+         */
+        confirmClearLogs() {
+            this.confirmAction(
+                () => this.clearLogs(),
+                'Clear Logs',
+                'Are you sure you want to clear all system logs? This action cannot be undone.',
+                'Clear'
+            );
         },
         
         /**
@@ -759,160 +684,94 @@ function adminPanel() {
          */
         async clearLogs() {
             try {
-                const response = await fetch('/admin/logs', {
-                    method: 'DELETE',
-                    credentials: 'include'
+                const response = await fetch('/admin/logs/clear', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
                 if (response.ok) {
                     this.dispatchNotification('Logs cleared successfully', 'success');
-                    this.logs = [];
+                    await this.loadLogs();
                 } else {
                     const data = await response.json();
                     this.dispatchNotification(data.error || 'Failed to clear logs', 'error');
                 }
             } catch (error) {
-                console.error('Error clearing logs:', error);
+                console.error('Clear logs error:', error);
                 this.dispatchNotification('Failed to clear logs', 'error');
             }
         },
         
         /**
-         * Download a document
+         * Load system configuration
          */
-        async downloadDocument(docId, fileName) {
+        async loadSystemConfig() {
+            this.isLoadingConfig = true;
+            this.configError = null;
+            this.configSuccess = null;
+            
             try {
-                window.open(`/admin/documents/${docId}/download`, '_blank');
-            } catch (error) {
-                console.error('Error downloading document:', error);
-                this.dispatchNotification('Failed to download document', 'error');
-            }
-        },
-        
-        /**
-         * Copy invitation link to clipboard
-         */
-        copyToClipboard(text) {
-            navigator.clipboard.writeText(text)
-                .then(() => {
-                    this.dispatchNotification('Copied to clipboard', 'success');
-                })
-                .catch(err => {
-                    console.error('Could not copy text: ', err);
-                    this.dispatchNotification('Failed to copy to clipboard', 'error');
+                const response = await fetch('/admin/config', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.config = data.config;
+                    
+                    // Initialize config form
+                    this.configForm = {};
+                    this.config.forEach(item => {
+                        this.configForm[item.key] = item.value;
+                    });
+                } else {
+                    this.configError = 'Failed to load system configuration';
+                }
+            } catch (error) {
+                console.error('Load config error:', error);
+                this.configError = 'Failed to load system configuration';
+            } finally {
+                this.isLoadingConfig = false;
+            }
         },
         
         /**
-         * Get status badge class based on active status
+         * Save system configuration
          */
-        getStatusClass(isActive) {
-            return isActive
-                ? 'bg-success-100 text-success-800'
-                : 'bg-danger-100 text-danger-800';
-        },
-        
-        /**
-         * Get file type badge class
-         */
-        getFileTypeBadgeClass(fileName) {
-            const extension = this.getFileExtension(fileName);
+        async saveSystemConfig() {
+            this.configError = null;
+            this.configSuccess = null;
             
-            switch (extension) {
-                case 'pdf':
-                    return 'bg-danger-100 text-danger-800';
-                case 'txt':
-                    return 'bg-secondary-100 text-secondary-800';
-                case 'docx':
-                case 'doc':
-                    return 'bg-primary-100 text-primary-800';
-                case 'jpg':
-                case 'jpeg':
-                case 'png':
-                    return 'bg-success-100 text-success-800';
-                default:
-                    return 'bg-warning-100 text-warning-800';
-            }
-        },
-        
-        /**
-         * Get file extension
-         */
-        getFileExtension(fileName) {
-            return fileName.split('.').pop().toLowerCase();
-        },
-        
-        /**
-         * Get file type label
-         */
-        getFileType(fileName) {
-            const extension = this.getFileExtension(fileName);
-            return extension.toUpperCase();
-        },
-        
-        /**
-         * Get file icon based on file type
-         */
-        getFileIcon(fileName) {
-            const extension = this.getFileExtension(fileName);
-            
-            switch (extension) {
-                case 'pdf':
-                    return 'fas fa-file-pdf';
-                case 'txt':
-                    return 'fas fa-file-alt';
-                case 'docx':
-                case 'doc':
-                    return 'fas fa-file-word';
-                case 'xlsx':
-                case 'xls':
-                    return 'fas fa-file-excel';
-                case 'pptx':
-                case 'ppt':
-                    return 'fas fa-file-powerpoint';
-                case 'jpg':
-                case 'jpeg':
-                case 'png':
-                case 'gif':
-                    return 'fas fa-file-image';
-                default:
-                    return 'fas fa-file';
-            }
-        },
-        
-        /**
-         * Get log level icon
-         */
-        getLogLevelIcon(level) {
-            switch (level.toLowerCase()) {
-                case 'error':
-                    return 'fas fa-times-circle';
-                case 'warning':
-                    return 'fas fa-exclamation-triangle';
-                case 'info':
-                    return 'fas fa-info-circle';
-                case 'debug':
-                    return 'fas fa-bug';
-                default:
-                    return 'fas fa-dot-circle';
-            }
-        },
-        
-        /**
-         * Get log level text class
-         */
-        getLogLevelClass(level) {
-            switch (level.toLowerCase()) {
-                case 'error':
-                    return 'text-danger-600';
-                case 'warning':
-                    return 'text-warning-600';
-                case 'info':
-                    return 'text-primary-600';
-                case 'debug':
-                    return 'text-secondary-600';
-                default:
-                    return 'text-secondary-500';
+            try {
+                const response = await fetch('/admin/config', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(this.configForm)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    this.configSuccess = 'Configuration saved successfully';
+                    
+                    // Reload config
+                    await this.loadSystemConfig();
+                } else {
+                    this.configError = data.error || 'Failed to save configuration';
+                }
+            } catch (error) {
+                console.error('Save config error:', error);
+                this.configError = 'Failed to save configuration';
             }
         },
         
@@ -920,27 +779,72 @@ function adminPanel() {
          * Format date for display
          */
         formatDate(dateString) {
-            if (!dateString) return '';
+            if (!dateString) return 'N/A';
             
             const date = new Date(dateString);
             
-            // Check if date is valid
-            if (isNaN(date.getTime())) return '';
+            if (isNaN(date.getTime())) {
+                return 'Invalid date';
+            }
             
             return date.toLocaleString();
         },
         
         /**
-         * Show a notification
+         * Format log level for display with appropriate styling
+         */
+        getLogLevelClass(level) {
+            switch (level.toUpperCase()) {
+                case 'ERROR':
+                    return 'bg-danger-100 text-danger-700';
+                case 'WARNING':
+                    return 'bg-warning-100 text-warning-700';
+                case 'INFO':
+                    return 'bg-primary-100 text-primary-700';
+                case 'DEBUG':
+                    return 'bg-secondary-100 text-secondary-700';
+                default:
+                    return 'bg-secondary-100 text-secondary-700';
+            }
+        },
+        
+        /**
+         * Set up confirmation modal
+         */
+        confirmAction(action, title, message, confirmText = 'Confirm') {
+            this.confirmModal = {
+                show: true,
+                title: title,
+                message: message,
+                action: action,
+                confirmText: confirmText
+            };
+        },
+        
+        /**
+         * Execute confirmed action
+         */
+        executeConfirmedAction() {
+            if (this.confirmModal.action) {
+                this.confirmModal.action();
+            }
+            
+            this.confirmModal.show = false;
+        },
+        
+        /**
+         * Display a notification
          */
         dispatchNotification(message, type = 'info') {
+            const id = Date.now();
             const event = new CustomEvent('notification', {
                 detail: {
                     message,
                     type,
-                    id: Date.now()
+                    id
                 }
             });
+            
             window.dispatchEvent(event);
         }
     };

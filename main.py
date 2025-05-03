@@ -918,6 +918,376 @@ def get_admin_stats():
         logger.error(f"Admin stats error: {str(e)}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
+# Missing Admin API Endpoints
+@app.route('/admin/invitations', methods=['GET'])
+@admin_required
+def admin_get_invitations():
+    """Get all invitations (admin only)"""
+    try:
+        with get_db_connection() as conn:
+            # Query all invitations, joining with user data for the creator
+            invitations = conn.execute(
+                """SELECT i.*, u.username as created_by_name 
+                FROM invitations i 
+                LEFT JOIN users u ON i.created_by = u.user_id 
+                ORDER BY i.created_at DESC"""
+            ).fetchall()
+            
+            result = []
+            for invitation in invitations:
+                result.append({
+                    "invitation_id": invitation["invitation_id"],
+                    "email": invitation["email"],
+                    "created_by": invitation["created_by"],
+                    "created_by_name": invitation["created_by_name"],
+                    "created_at": invitation["created_at"],
+                    "expires_at": invitation["expires_at"],
+                    "used": bool(invitation["used"])
+                })
+            
+            return jsonify({
+                "status": "success",
+                "invitations": result
+            })
+    
+    except Exception as e:
+        logger.error(f"Get invitations error: {str(e)}")
+        return jsonify({"error": "Failed to retrieve invitations"}), 500
+
+@app.route('/admin/invitations/<invitation_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_invitation(invitation_id):
+    """Delete an invitation (admin only)"""
+    try:
+        with get_db_connection() as conn:
+            # Verify invitation exists
+            invitation = conn.execute(
+                "SELECT email FROM invitations WHERE invitation_id = ?",
+                (invitation_id,)
+            ).fetchone()
+            
+            if not invitation:
+                return jsonify({"error": "Invitation not found"}), 404
+            
+            # Delete the invitation
+            conn.execute("DELETE FROM invitations WHERE invitation_id = ?", (invitation_id,))
+            conn.commit()
+            
+            return jsonify({
+                "status": "success",
+                "message": "Invitation deleted successfully"
+            })
+    
+    except Exception as e:
+        logger.error(f"Delete invitation error: {str(e)}")
+        return jsonify({"error": "Failed to delete invitation"}), 500
+
+@app.route('/admin/documents', methods=['GET'])
+@admin_required
+def admin_get_documents():
+    """Get all documents (admin only)"""
+    try:
+        with get_db_connection() as conn:
+            # Query all documents with conversation and user information
+            documents = conn.execute(
+                """SELECT d.*, c.conversation_name, u.username as owner_name 
+                FROM documents d 
+                LEFT JOIN conversations c ON d.conversation_id = c.conversation_id 
+                LEFT JOIN users u ON c.user_id = u.user_id 
+                ORDER BY d.created_at DESC"""
+            ).fetchall()
+            
+            result = []
+            for document in documents:
+                # Get file extension from name
+                name = document["name"] or ""
+                ext = name.split('.')[-1].lower() if '.' in name else ""
+                
+                # Determine document type
+                doc_type = "unknown"
+                if ext in ["pdf"]:
+                    doc_type = "pdf"
+                elif ext in ["docx", "doc"]:
+                    doc_type = "word"
+                elif ext in ["txt", "md"]:
+                    doc_type = "text"
+                elif ext in ["jpg", "jpeg", "png", "gif"]:
+                    doc_type = "image"
+                
+                result.append({
+                    "doc_id": document["doc_id"],
+                    "name": document["name"],
+                    "type": doc_type,
+                    "conversation_id": document["conversation_id"],
+                    "conversation_name": document["conversation_name"],
+                    "uploaded_by": document.get("owner_name", "Unknown"),
+                    "created_at": document["created_at"],
+                    "size": len(document["content"]) if document["content"] else 0,
+                    "path": document["path"]
+                })
+            
+            return jsonify({
+                "status": "success",
+                "documents": result
+            })
+    
+    except Exception as e:
+        logger.error(f"Get documents error: {str(e)}")
+        return jsonify({"error": "Failed to retrieve documents"}), 500
+
+@app.route('/admin/documents/<doc_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_document(doc_id):
+    """Delete a document (admin only)"""
+    try:
+        with get_db_connection() as conn:
+            # Verify document exists
+            document = conn.execute(
+                "SELECT name, path FROM documents WHERE doc_id = ?",
+                (doc_id,)
+            ).fetchone()
+            
+            if not document:
+                return jsonify({"error": "Document not found"}), 404
+            
+            # Delete the document from database
+            conn.execute("DELETE FROM documents WHERE doc_id = ?", (doc_id,))
+            conn.commit()
+            
+            # Delete physical file if it exists
+            if document["path"] and os.path.exists(document["path"]):
+                try:
+                    os.remove(document["path"])
+                except Exception as file_error:
+                    logger.error(f"Error deleting document file: {str(file_error)}")
+            
+            return jsonify({
+                "status": "success",
+                "message": "Document deleted successfully"
+            })
+    
+    except Exception as e:
+        logger.error(f"Delete document error: {str(e)}")
+        return jsonify({"error": "Failed to delete document"}), 500
+
+@app.route('/admin/logs', methods=['GET'])
+@admin_required
+def admin_get_logs():
+    """Get system logs with filtering (admin only)"""
+    try:
+        # Get query parameters
+        level = request.args.get('level', 'all').upper()
+        limit = min(int(request.args.get('limit', 100)), 1000)  # Cap at 1000 entries
+        
+        # Read log file directly
+        log_file = "triton.log"
+        if not os.path.exists(log_file):
+            return jsonify({
+                "status": "success",
+                "logs": [],
+                "message": "Log file not found"
+            })
+        
+        # Read the file in reverse to get newest logs first
+        with open(log_file, 'r') as f:
+            # Read all lines and reverse
+            lines = f.readlines()
+            lines.reverse()
+        
+        # Parse log lines
+        logs = []
+        log_pattern = re.compile(r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (\w+) - (\w+) - (.+)')
+        
+        for line in lines:
+            match = log_pattern.match(line.strip())
+            if match:
+                timestamp, logger_name, log_level, message = match.groups()
+                
+                # Filter by level if specified
+                if level != 'ALL' and log_level != level:
+                    continue
+                
+                logs.append({
+                    "log_id": str(uuid.uuid4()),  # Generate a unique ID
+                    "timestamp": timestamp,
+                    "level": log_level,
+                    "service": logger_name,
+                    "message": message,
+                    "details": None
+                })
+                
+                # Apply limit
+                if len(logs) >= limit:
+                    break
+        
+        return jsonify({
+            "status": "success",
+            "logs": logs,
+            "pagination": {
+                "total": len(logs),
+                "limit": limit
+            }
+        })
+    
+    except Exception as e:
+        logger.error(f"Get logs error: {str(e)}")
+        return jsonify({"error": "Failed to retrieve logs"}), 500
+
+@app.route('/admin/logs/clear', methods=['POST'])
+@admin_required
+def admin_clear_logs():
+    """Clear system logs (admin only)"""
+    try:
+        log_file = "triton.log"
+        
+        # Check if log file exists
+        if os.path.exists(log_file):
+            # Open the file in write mode to clear it
+            with open(log_file, 'w') as f:
+                f.write(f"{datetime.now()} - SYSTEM - INFO - Log file cleared by admin {g.user['username']}\n")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Logs cleared successfully"
+        })
+    
+    except Exception as e:
+        logger.error(f"Clear logs error: {str(e)}")
+        return jsonify({"error": "Failed to clear logs"}), 500
+
+@app.route('/admin/config', methods=['GET'])
+@admin_required
+def admin_get_config():
+    """Get system configuration (admin only)"""
+    try:
+        # Return a curated list of configuration settings
+        # In a production system, you would store these in a database
+        config = [
+            {
+                "key": "azure_endpoint",
+                "value": AZURE_ENDPOINT,
+                "type": "string",
+                "description": "Azure OpenAI API Endpoint URL",
+                "updated_at": app.start_time,
+                "updated_by": None
+            },
+            {
+                "key": "max_upload_size",
+                "value": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                "type": "integer",
+                "description": "Maximum upload size in MB",
+                "updated_at": app.start_time,
+                "updated_by": None
+            },
+            {
+                "key": "default_search_engine",
+                "value": "google",
+                "type": "string",
+                "description": "Default search engine (google or duckduckgo)",
+                "updated_at": app.start_time,
+                "updated_by": None
+            },
+            {
+                "key": "log_level",
+                "value": app.config["LOG_LEVEL"],
+                "type": "string",
+                "description": "Application log level",
+                "updated_at": app.start_time,
+                "updated_by": None
+            },
+            {
+                "key": "invitation_expiry_days",
+                "value": 7,
+                "type": "integer",
+                "description": "Number of days until invitations expire",
+                "updated_at": app.start_time,
+                "updated_by": None
+            },
+            {
+                "key": "max_conversations_per_user",
+                "value": 100,
+                "type": "integer",
+                "description": "Maximum number of conversations per user",
+                "updated_at": app.start_time,
+                "updated_by": None
+            }
+        ]
+        
+        return jsonify({
+            "status": "success",
+            "config": config
+        })
+    
+    except Exception as e:
+        logger.error(f"Get config error: {str(e)}")
+        return jsonify({"error": "Failed to retrieve configuration"}), 500
+
+@app.route('/admin/config', methods=['POST'])
+@admin_required
+def admin_update_config():
+    """Update system configuration (admin only)"""
+    try:
+        data = request.json
+        
+        if not data or not isinstance(data, dict):
+            return jsonify({"error": "Invalid configuration data"}), 400
+        
+        # Process updates
+        updated_keys = []
+        failed_keys = []
+        
+        # In a real implementation, these would be saved to database
+        # For this simplified version, we'll just log the changes
+        for key, value in data.items():
+            # Validate key is allowed to be changed
+            allowed_keys = {"max_upload_size", "default_search_engine", "log_level", 
+                           "invitation_expiry_days", "max_conversations_per_user"}
+            
+            if key not in allowed_keys:
+                failed_keys.append(key)
+                continue
+            
+            try:
+                # Apply configuration change
+                if key == "log_level":
+                    if value.upper() in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+                        app.config["LOG_LEVEL"] = value.upper()
+                        logger.setLevel(getattr(logging, value.upper()))
+                        updated_keys.append(key)
+                    else:
+                        failed_keys.append(key)
+                
+                elif key == "max_upload_size":
+                    try:
+                        size_mb = int(value)
+                        if 1 <= size_mb <= 100:  # Reasonable limits
+                            app.config["MAX_CONTENT_LENGTH"] = size_mb * 1024 * 1024
+                            updated_keys.append(key)
+                        else:
+                            failed_keys.append(key)
+                    except ValueError:
+                        failed_keys.append(key)
+                
+                else:
+                    # For other settings, just log the change (would be saved to DB in production)
+                    logger.info(f"Config change: {key} = {value} (by admin {g.user['username']})")
+                    updated_keys.append(key)
+                    
+            except Exception as config_error:
+                logger.error(f"Error updating config {key}: {str(config_error)}")
+                failed_keys.append(key)
+        
+        return jsonify({
+            "status": "success",
+            "updated": updated_keys,
+            "failed": failed_keys,
+            "message": f"Updated {len(updated_keys)} configuration settings"
+        })
+    
+    except Exception as e:
+        logger.error(f"Update config error: {str(e)}")
+        return jsonify({"error": "Failed to update configuration"}), 500
+
 # CLI Commands for first admin user
 @click.command('create-admin')
 @click.option('--username', required=True, help='Admin username')
@@ -1498,8 +1868,8 @@ def chat():
             FeatureFlags.DOCUMENT: bool(features.get('document', False) or selected_docs)
         }
 
-        # Log enabled features (without excessive debug)
-        logger.info(f"Request with features: search={active_features[FeatureFlags.SEARCH]}, reasoning={active_features[FeatureFlags.REASONING]}, deep_research={active_features[FeatureFlags.DEEP_RESEARCH]}, document={active_features[FeatureFlags.DOCUMENT]}")
+        # Log enabled features (removing excessive debug)
+        logger.info(f"Processing chat request for model: {model_id}")
 
         # Verify document access if documents are provided
         if selected_docs:
@@ -1592,18 +1962,11 @@ This is a critical requirement - failure to use both research tools will result 
                     user_msg = row['user_message']
                     if user_msg is not None and isinstance(user_msg, str):
                         messages.append(UserMessage(content=user_msg))
-                    else:
-                        logger.warning(f"Skipped invalid user message in conversation {conversation_id}: {user_msg}")
                     
                     # Validate assistant message content before adding
                     assistant_msg = row['assistant_message']
                     if assistant_msg is not None and isinstance(assistant_msg, str):
                         messages.append(AssistantMessage(content=assistant_msg))
-                    else:
-                        logger.warning(f"Skipped invalid assistant message in conversation {conversation_id}: {assistant_msg}")
-                
-                # Log the number of messages loaded from history
-                logger.info(f"Loaded {len(rows)} messages from conversation history")
         
         # Add current user message - verify it's not null
         if message is None or not isinstance(message, str):
@@ -1683,10 +2046,7 @@ This is a critical requirement - failure to use both research tools will result 
         
         # Handle tool calls if any
         if response.choices[0].finish_reason == CompletionsFinishReason.TOOL_CALLS and response.choices[0].message.tool_calls:
-            # Log number of tool calls detected
-            logger.info(f"Tool calls detected: {len(response.choices[0].message.tool_calls)}")
-            
-            # Add assistant message with tool calls to conversation
+            # Process tool calls
             messages.append(AssistantMessage(tool_calls=response.choices[0].message.tool_calls))
             
             # Process each tool call
@@ -1702,10 +2062,6 @@ This is a critical requirement - failure to use both research tools will result 
                         # Parse function arguments and call the function
                         try:
                             function_args = json.loads(tool_call.function.arguments)
-                            
-                            # Log tool execution with minimal info
-                            logger.info(f"Executing tool: {function_name}")
-                            
                             function_result = tool_handlers[function_name](function_args)
                             
                             # Record search results for reasoning/display
@@ -1733,7 +2089,6 @@ This is a critical requirement - failure to use both research tools will result 
                     if urls_to_extract:
                         # Add a special message to force web content extraction
                         messages.append(UserMessage(content=f"Please use the extract_web_content tool to analyze these URLs in depth before answering: {', '.join(urls_to_extract)}"))
-                        logger.info(f"Added prompt to extract content from {len(urls_to_extract)} URLs")
             
             # Get final response after tool calls
             try:
@@ -1771,8 +2126,6 @@ This is a critical requirement - failure to use both research tools will result 
         else:
             # No tool calls detected
             if active_features[FeatureFlags.DEEP_RESEARCH]:
-                logger.info("No tool calls detected in initial response. Adding explicit instruction.")
-                
                 # For deep research mode, try one more time with an explicit instruction
                 messages.append(AssistantMessage(content=response.choices[0].message.content))
                 messages.append(UserMessage(content="Please use the search_internet tool and extract_web_content tool to research this topic thoroughly before providing your final answer. This is required for deep research mode."))
@@ -1871,7 +2224,6 @@ Format your response as a clear, step-by-step reasoning chain.
                     )
                     # Explicitly commit the transaction
                     conn.commit()
-                    logger.info(f"Created new conversation: {conversation_id} with name: {conversation_name}")
                 except Exception as db_error:
                     logger.error(f"Database error creating conversation: {str(db_error)}")
                     # In case of error, re-raise to be caught by the outer try-except
@@ -1889,7 +2241,6 @@ Format your response as a clear, step-by-step reasoning chain.
                     ).fetchone()
                     
                     if not current_conversation:
-                        logger.warning(f"Tried to update non-existent conversation: {conversation_id}")
                         # Create a new conversation instead
                         conversation_name = message[:50] + ("..." if len(message) > 50 else "")
                         conn.execute(
@@ -1918,7 +2269,6 @@ Format your response as a clear, step-by-step reasoning chain.
                     
                     # Explicitly commit the transaction
                     conn.commit()
-                    logger.info(f"Updated existing conversation: {conversation_id}")
                 except Exception as db_error:
                     logger.error(f"Database error updating conversation: {str(db_error)}")
                     # In case of error, re-raise to be caught by the outer try-except
@@ -1948,21 +2298,19 @@ Format your response as a clear, step-by-step reasoning chain.
                 )
             )
             conn.commit()
-            
-            logger.info(f"Saved message {message_id} to conversation {conversation_id}")
         
-        # Return the response, ensuring it's not null
+        # Return the response, ensuring search_results is always an array
         return jsonify({
             "conversation_id": conversation_id,
             "message": ai_response,
             "reasoning": reasoning,
-            "search_results": search_results
+            "search_results": search_results if search_results else []
         })
     
     except Exception as e:
-        logger.error(f"Chat error: {str(e)}\n{traceback.format_exc()}")
+        logger.error(f"Chat error: {str(e)}")
         return jsonify({
-            "error": str(e),
+            "error": "An error occurred while processing your request",
             "conversation_id": conversation_id
         }), 500
 
@@ -2048,7 +2396,6 @@ def get_conversations():
 def get_conversation(conversation_id):
     """Get a specific conversation and its messages"""
     try:
-        logger.info(f"Loading conversation: {conversation_id}")
         with get_db_connection() as conn:
             # Check access permission
             if g.user["role"] != UserRole.ADMIN:
@@ -2058,7 +2405,6 @@ def get_conversation(conversation_id):
                 ).fetchone()
                 
                 if not conversation:
-                    logger.warning(f"Access denied to conversation {conversation_id} for user {g.user['user_id']}")
                     return jsonify({"error": "Conversation not found or access denied"}), 404
             else:
                 conversation = conn.execute(
@@ -2067,7 +2413,6 @@ def get_conversation(conversation_id):
                 ).fetchone()
                 
                 if not conversation:
-                    logger.warning(f"Conversation not found: {conversation_id}")
                     return jsonify({"error": "Conversation not found"}), 404
             
             # Get messages
@@ -2077,8 +2422,6 @@ def get_conversation(conversation_id):
                 FROM messages WHERE conversation_id = ? ORDER BY timestamp""",
                 (conversation_id,)
             ).fetchall()
-            
-            logger.info(f"Found {len(messages)} messages for conversation {conversation_id}")
             
             message_list = []
             for message in messages:
@@ -2239,5 +2582,5 @@ app.start_time = time.time()
 
 if __name__ == "__main__":
     from waitress import serve
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 3297))
     serve(app, host="0.0.0.0", port=port)

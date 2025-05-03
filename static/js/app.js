@@ -402,7 +402,6 @@ function chatApp() {
             this.state = 'loading';
             
             try {
-                console.log(`Loading conversation: ${conversationId}`);
                 const response = await fetch(`/conversations/${conversationId}`, {
                     method: 'GET',
                     credentials: 'include',
@@ -413,48 +412,35 @@ function chatApp() {
                 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Conversation data received:', data);
                     
-                    this.currentConversationId = conversationId;
+                    // Update UI state
+                    this.currentConversationId = data.conversation_id;
+                    this.currentMessages = data.messages.map(msg => {
+                        // Ensure search_context is always an array
+                        if (!msg.search_context || !Array.isArray(msg.search_context)) {
+                            msg.search_context = [];
+                        }
+                        return msg;
+                    });
                     
-                    // Ensure messages array is properly initialized
-                    if (Array.isArray(data.messages)) {
-                        this.currentMessages = data.messages;
-                        console.log(`Loaded ${this.currentMessages.length} messages`);
-                    } else {
-                        console.error('No messages array in response:', data);
-                        this.currentMessages = [];
-                    }
+                    // Update URL to include conversation ID
+                    window.history.replaceState({}, '', `/?conversation=${conversationId}`);
                     
-                    // Update URL for sharing/bookmarking
-                    window.history.replaceState(
-                        {},
-                        '',
-                        `${window.location.pathname}?conversation=${conversationId}`
-                    );
-                    
-                    // If this is a mobile view, close the sidebar
-                    if (window.innerWidth < 1024) {
-                        this.sidebarOpen = false;
-                    }
-                    
-                    // Set state to chat after loading
+                    // Set state to chat
                     this.state = 'chat';
                     
-                    // Scroll to the bottom of the messages
+                    // Scroll to bottom after the DOM updates
                     this.$nextTick(() => {
                         this.scrollToBottom();
                         this.renderCodeAndMath();
                     });
                 } else {
                     const errorData = await response.json();
-                    console.error('Failed to load conversation:', errorData);
                     this.dispatchNotification(errorData.error || 'Failed to load conversation', 'error');
                     this.state = 'welcome';
                 }
             } catch (error) {
-                console.error('Error loading conversation:', error);
-                this.dispatchNotification('Error loading conversation', 'error');
+                this.dispatchNotification('Failed to load conversation', 'error');
                 this.state = 'welcome';
             } finally {
                 this.isLoading = false;
@@ -509,7 +495,8 @@ function chatApp() {
                 timestamp: new Date().toISOString(),
                 user_message: message,
                 assistant_message: '',
-                model: this.selectedModel
+                model: this.selectedModel,
+                search_context: [] // Ensure this is always defined
             };
             
             this.currentMessages.push(messageObj);
@@ -520,63 +507,63 @@ function chatApp() {
             });
             
             try {
+                const payload = {
+                    message: message,
+                    conversation_id: this.currentConversationId,
+                    model: this.selectedModel,
+                    features: this.features
+                };
+                
+                // Add document IDs if document feature is enabled
+                if (this.features.document && this.selectedDocuments && this.selectedDocuments.length > 0) {
+                    payload.document_ids = this.selectedDocuments;
+                }
+                
                 const response = await fetch('/chat', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        conversation_id: this.currentConversationId,
-                        model: this.selectedModel,
-                        features: this.features
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
+                const data = await response.json();
+                
                 if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Update conversation ID if this is a new conversation
+                    // Set conversation ID if this is a new conversation
                     if (!this.currentConversationId) {
                         this.currentConversationId = data.conversation_id;
+                        window.history.replaceState({}, '', `/?conversation=${data.conversation_id}`);
                         
-                        // Update URL for sharing/bookmarking
-                        window.history.replaceState(
-                            {},
-                            '',
-                            `${window.location.pathname}?conversation=${data.conversation_id}`
-                        );
-                        
-                        // Reload conversations to include the new one
+                        // Add to conversations list
                         await this.loadConversations();
                     }
                     
-                    // Update the message with the actual response
+                    // Update the message with AI response
                     const messageIndex = this.currentMessages.findIndex(m => m.message_id === tempId);
-                    if (messageIndex !== -1) {
+                    if (messageIndex >= 0) {
                         this.currentMessages[messageIndex].assistant_message = data.message;
-                        this.currentMessages[messageIndex].reasoning = data.reasoning;
-                        this.currentMessages[messageIndex].search_context = data.search_results;
+                        this.currentMessages[messageIndex].reasoning = data.reasoning || '';
+                        this.currentMessages[messageIndex].search_context = Array.isArray(data.search_results) ? data.search_results : [];
+                        
+                        // Re-render code highlighting and math after the DOM updates
+                        this.$nextTick(() => {
+                            this.renderCodeAndMath();
+                            this.scrollToBottom();
+                        });
                     }
-                    
-                    // Scroll to bottom after content updates
-                    this.$nextTick(() => {
-                        this.scrollToBottom();
-                        this.renderCodeAndMath();
-                    });
                 } else {
-                    const errorData = await response.json();
-                    console.error('Error sending message:', errorData);
-                    this.dispatchNotification(errorData.error || 'Failed to send message', 'error');
+                    // Handle error
+                    this.dispatchNotification(data.error || 'Failed to get response', 'error');
                     
-                    // Remove the optimistic message if the request failed
+                    // Remove the temporary message
                     this.currentMessages = this.currentMessages.filter(m => m.message_id !== tempId);
                 }
             } catch (error) {
-                console.error('Error sending message:', error);
                 this.dispatchNotification('Failed to send message', 'error');
                 
-                // Remove the optimistic message if the request failed
+                // Remove the temporary message
                 this.currentMessages = this.currentMessages.filter(m => m.message_id !== tempId);
             } finally {
                 this.isThinking = false;
