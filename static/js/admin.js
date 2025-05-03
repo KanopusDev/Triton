@@ -173,13 +173,13 @@ function adminPanel() {
             // Sort data by date
             activityData.sort((a, b) => new Date(a.date) - new Date(b.date));
             
-            // Extract labels and values
-            const labels = activityData.map(item => {
+            // Create a deep copy of the data to avoid circular references
+            const labels = [...activityData.map(item => {
                 const date = new Date(item.date);
                 return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-            });
+            })];
             
-            const values = activityData.map(item => item.count);
+            const values = [...activityData.map(item => item.count)];
             
             // Destroy existing chart if it exists
             if (this.userActivityChart) {
@@ -187,11 +187,11 @@ function adminPanel() {
             }
             
             try {
-                // Create new chart
-                this.userActivityChart = new Chart(chartElement, {
+                // Create new chart with immutable data objects
+                const chartConfig = {
                     type: 'line',
                     data: {
-                        labels: labels,
+                        labels,
                         datasets: [{
                             label: 'Active Users',
                             data: values,
@@ -224,7 +224,9 @@ function adminPanel() {
                             }
                         }
                     }
-                });
+                };
+                
+                this.userActivityChart = new Chart(chartElement, chartConfig);
             } catch (error) {
                 console.error('Error creating user activity chart:', error);
             }
@@ -247,9 +249,9 @@ function adminPanel() {
                 return;
             }
             
-            // Extract labels and values
-            const labels = modelData.map(item => item.model);
-            const values = modelData.map(item => item.count);
+            // Create deep copies of arrays to prevent circular references
+            const labels = [...modelData.map(item => item.model)];
+            const values = [...modelData.map(item => item.count)];
             
             // Generate colors for each model
             const backgroundColors = [
@@ -266,11 +268,11 @@ function adminPanel() {
             }
             
             try {
-                // Create new chart
-                this.modelUsageChart = new Chart(chartElement, {
+                // Create new chart with immutable configuration objects
+                const chartConfig = {
                     type: 'doughnut',
                     data: {
-                        labels: labels,
+                        labels,
                         datasets: [{
                             data: values,
                             backgroundColor: backgroundColors.slice(0, values.length),
@@ -301,7 +303,9 @@ function adminPanel() {
                             }
                         }
                     }
-                });
+                };
+                
+                this.modelUsageChart = new Chart(chartElement, chartConfig);
             } catch (error) {
                 console.error('Error creating model usage chart:', error);
             }
@@ -702,6 +706,28 @@ function adminPanel() {
             return DateFormatter.formatDateTime(dateString, {
                 monthFormat: 'short'
             });
+        },
+        
+        /**
+         * Get CSS classes for user status badge
+         */
+        getStatusClass(isActive) {
+            return isActive 
+                ? 'bg-success-100 text-success-700' 
+                : 'bg-danger-100 text-danger-700';
+        },
+        
+        /**
+         * Get CSS classes for log level badge
+         */
+        getLogLevelClass(level) {
+            const classes = {
+                'ERROR': 'bg-danger-100 text-danger-700',
+                'WARNING': 'bg-warning-100 text-warning-700',
+                'INFO': 'bg-primary-100 text-primary-700',
+                'DEBUG': 'bg-secondary-100 text-secondary-700'
+            };
+            return classes[level] || 'bg-secondary-100 text-secondary-700';
         },
         
         /**

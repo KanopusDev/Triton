@@ -102,6 +102,18 @@ def after_request(response):
     response.headers.add('X-Content-Type-Options', 'nosniff')
     response.headers.add('X-Frame-Options', 'DENY')
     response.headers.add('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    
+    # Add Content-Security-Policy header to ensure consistent CSP across the application
+    csp_directives = [
+        "default-src 'self'",
+        "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://static.cloudflareinsights.com 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com 'unsafe-inline'",
+        "img-src 'self' data: https:",
+        "font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+        "connect-src 'self' https://cloudflareinsights.com"
+    ]
+    
+    response.headers.add('Content-Security-Policy', "; ".join(csp_directives))
     return response
 
 # Add a special route to serve font files with proper headers
