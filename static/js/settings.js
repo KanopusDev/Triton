@@ -668,30 +668,7 @@ function settingsApp() {
         },
         
         formatDate(dateString) {
-            if (!dateString) return 'Unknown';
-            
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) {
-                // Today - show time
-                return 'Today at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            } else if (diffDays === 1) {
-                // Yesterday
-                return 'Yesterday';
-            } else if (diffDays < 7) {
-                // Within a week
-                return `${diffDays} days ago`;
-            } else {
-                // More than a week ago
-                return date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }
+            return DateFormatter.formatRelativeTime(dateString);
         },
         
         clearMessages() {

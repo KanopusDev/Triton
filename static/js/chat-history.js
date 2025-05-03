@@ -189,34 +189,7 @@ function chatHistoryManager() {
         },
         
         formatDate(dateString) {
-            if (!dateString) return '';
-            
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffSec = diffMs / 1000;
-            const diffMin = diffSec / 60;
-            const diffHour = diffMin / 60;
-            const diffDays = diffHour / 24;
-            
-            if (diffSec < 60) {
-                return 'Just now';
-            } else if (diffMin < 60) {
-                const minutes = Math.floor(diffMin);
-                return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
-            } else if (diffHour < 24) {
-                const hours = Math.floor(diffHour);
-                return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
-            } else if (diffDays < 7) {
-                const days = Math.floor(diffDays);
-                return `${days} day${days !== 1 ? 's' : ''} ago`;
-            } else {
-                return date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }
+            return DateFormatter.formatRelativeTime(dateString);
         },
         
         getTruncatedMessage(message, maxLength = 60) {

@@ -689,45 +689,17 @@ function chatApp() {
         },
         
         /**
-         * Format date for display
+         * Format date for display using user's local timezone
          */
         formatDate(dateString) {
-            if (!dateString) return '';
-            
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            
-            // Same day - show time
-            if (date.toDateString() === now.toDateString()) {
-                return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-            }
-            
-            // Yesterday
-            const yesterday = new Date(now);
-            yesterday.setDate(now.getDate() - 1);
-            if (date.toDateString() === yesterday.toDateString()) {
-                return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-            }
-            
-            // Within a week
-            if (diffDays < 7) {
-                return `${date.toLocaleDateString([], { weekday: 'long' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-            }
-            
-            // More than a week ago
-            return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+            return DateFormatter.formatDate(dateString);
         },
         
         /**
-         * Format time for display
+         * Format time for display using user's local timezone
          */
         formatTime(dateString) {
-            if (!dateString) return '';
-            
-            const date = new Date(dateString);
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return DateFormatter.formatTime(dateString ? new Date(dateString) : null);
         },
         
         /**

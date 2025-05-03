@@ -776,18 +776,12 @@ function adminPanel() {
         },
         
         /**
-         * Format date for display
+         * Format date for display using user's local timezone
          */
         formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            
-            const date = new Date(dateString);
-            
-            if (isNaN(date.getTime())) {
-                return 'Invalid date';
-            }
-            
-            return date.toLocaleString();
+            return DateFormatter.formatDateTime(dateString, {
+                monthFormat: 'short'
+            });
         },
         
         /**
