@@ -1520,7 +1520,7 @@ def get_ai_client(model_id):
         }
     
     # Default credentials
-    azure_api_key = os.getenv("AZURE_API_KEY", "")
+    azure_api_key = os.getenv("AZURE_API_KEY")
     github_token = os.getenv("GITHUB_TOKEN", azure_api_key)
     
     # Determine endpoint and credentials based on model provider
@@ -1924,7 +1924,7 @@ MODEL_OPTIONS = {
             "description": "OpenAI's newest text model with extremely long context windows",
         "tokens": {
             "input": 1048576,  # 1049k
-            "output": 33792    # 33k
+            "output": 32768    # 33k
         }
     },
     "openai/o4-mini": {
