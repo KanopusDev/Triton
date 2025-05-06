@@ -1924,7 +1924,7 @@ MODEL_OPTIONS = {
             "description": "OpenAI's newest text model with extremely long context windows",
         "tokens": {
             "input": 1048576,  # 1049k
-            "output": 32768    # 33k
+            "output": 32768    # 32k
         }
     },
     "openai/o4-mini": {
