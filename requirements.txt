@@ -35,4 +35,3 @@ tenacity
 beautifulsoup4
 markdown
 psutil
-tiktoken

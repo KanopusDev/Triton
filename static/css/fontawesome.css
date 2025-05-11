@@ -1,0 +1,107 @@
+/**
+ * Local Font Awesome Configuration
+ * Enterprise-grade Font Awesome implementation with local font files
+ */
+
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url("/static/fonts/fa-solid-900.woff2") format("woff2"),
+       url("/static/fonts/fa-solid-900.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("/static/fonts/fa-regular-400.woff2") format("woff2"),
+       url("/static/fonts/fa-regular-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: 'Font Awesome 6 Brands';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("/static/fonts/fa-brands-400.woff2") format("woff2"),
+       url("/static/fonts/fa-brands-400.ttf") format("truetype");
+}
+
+.fas,
+.fa-solid {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+}
+
+.far,
+.fa-regular {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 400;
+}
+
+.fab,
+.fa-brands {
+  font-family: 'Font Awesome 6 Brands';
+  font-weight: 400;
+}
+
+/* Icon definitions - Just a subset of common icons used in the application */
+.fa-user:before { content: "\f007"; }
+.fa-lock:before { content: "\f023"; }
+.fa-arrow-left:before { content: "\f060"; }
+.fa-bars:before { content: "\f0c9"; }
+.fa-robot:before { content: "\f544"; }
+.fa-brain:before { content: "\f5dc"; }
+.fa-search:before { content: "\f002"; }
+.fa-microscope:before { content: "\f610"; }
+.fa-file-alt:before { content: "\f15c"; }
+.fa-check:before { content: "\f00c"; }
+.fa-copy:before { content: "\f0c5"; }
+.fa-times:before { content: "\f00d"; }
+.fa-sync-alt:before { content: "\f2f1"; }
+.fa-chevron-down:before { content: "\f078"; }
+.fa-chevron-right:before { content: "\f054"; }
+.fa-sign-out-alt:before { content: "\f2f5"; }
+.fa-plus:before { content: "\f067"; }
+.fa-paper-plane:before { content: "\f1d8"; }
+.fa-paperclip:before { content: "\f0c6"; }
+.fa-cog:before { content: "\f013"; }
+.fa-user-circle:before { content: "\f2bd"; }
+.fa-users-cog:before { content: "\f509"; }
+.fa-user-plus:before { content: "\f234"; }
+.fa-globe:before { content: "\f0ac"; }
+.fa-check-circle:before { content: "\f058"; }
+.fa-quote-right:before { content: "\f10e"; }
+.fa-info-circle:before { content: "\f05a"; }
+.fa-exclamation-circle:before { content: "\f06a"; }
+.fa-exclamation-triangle:before { content: "\f071"; }
+.fa-trash-alt:before { content: "\f2ed"; }
+.fa-edit:before { content: "\f044"; }
+.fa-keyboard:before { content: "\f11c"; }
+.fa-clock:before { content: "\f017"; }
+.fa-spinner:before { content: "\f110"; }
+.fa-desktop:before { content: "\f108"; }
+.fa-cloud-upload-alt:before { content: "\f382"; }
+.fa-comments:before { content: "\f086"; }
+.fa-chart-line:before { content: "\f201"; }
+.fa-users:before { content: "\f0c0"; }
+.fa-envelope:before { content: "\f0e0"; }
+.fa-clipboard-list:before { content: "\f46d"; }
+.fa-cogs:before { content: "\f085"; }
+
+/* Add animation for fa-spin */
+.fa-spin {
+  animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
