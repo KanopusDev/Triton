@@ -1,0 +1,158 @@
+2025-05-11 20:57:44,562 [INFO] run (run.py:343): Logging configured with level INFO
+2025-05-11 20:57:44,564 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 20:57:44,589 [INFO] triton.database (database.py:385): First-time database initialization
+2025-05-11 20:57:44,596 [INFO] triton.database (database.py:505): Database initialized with schema version 1.0.0
+2025-05-11 20:57:44,596 [INFO] run (run.py:367): Database initialized successfully
+2025-05-11 20:57:44,597 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 20:57:45,328 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 20:57:45,344 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 20:58:24,295 [INFO] run (run.py:343): Logging configured with level INFO
+2025-05-11 20:58:24,299 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 20:58:24,301 [INFO] triton.database (database.py:509): Database already initialized with schema version 1.0.0
+2025-05-11 20:58:24,301 [INFO] run (run.py:367): Database initialized successfully
+2025-05-11 20:58:24,301 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 20:58:24,825 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 20:58:24,890 [INFO] triton.auth (auth.py:754): Auth routes registered
+2025-05-11 20:58:24,905 [INFO] triton.admin (admin.py:675): Admin routes registered
+2025-05-11 20:58:24,910 [INFO] triton.chat (chat.py:813): Chat routes registered
+2025-05-11 20:58:24,921 [INFO] triton.images (images.py:763): Image database tables initialized
+2025-05-11 20:58:24,922 [INFO] triton.images (images.py:779): Image routes registered
+2025-05-11 20:58:24,960 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 20:58:24,962 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 20:59:43,838 [INFO] run (run.py:343): Logging configured with level INFO
+2025-05-11 20:59:43,838 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 20:59:43,842 [INFO] triton.database (database.py:509): Database already initialized with schema version 1.0.0
+2025-05-11 20:59:43,842 [INFO] run (run.py:367): Database initialized successfully
+2025-05-11 20:59:43,842 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 20:59:44,342 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 20:59:44,377 [INFO] triton.auth (auth.py:754): Auth routes registered
+2025-05-11 20:59:44,384 [INFO] triton.admin (admin.py:675): Admin routes registered
+2025-05-11 20:59:44,388 [INFO] triton.chat (chat.py:813): Chat routes registered
+2025-05-11 20:59:44,391 [INFO] triton.images (images.py:763): Image database tables initialized
+2025-05-11 20:59:44,392 [INFO] triton.images (images.py:779): Image routes registered
+2025-05-11 20:59:44,401 [INFO] triton (run.py:121): Triton application initialized in production environment
+2025-05-11 20:59:44,483 [INFO] werkzeug (_internal.py:97): [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-05-11 20:59:44,483 [INFO] werkzeug (_internal.py:97): [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-05-11 20:59:44,483 [INFO] werkzeug (_internal.py:97): [33mPress CTRL+C to quit[0m
+2025-05-11 20:59:44,483 [INFO] werkzeug (_internal.py:97): [33mPress CTRL+C to quit[0m
+2025-05-11 20:59:44,491 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 20:59:44,491 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 20:59:47,827 [INFO] run (run.py:343): Logging configured with level INFO
+2025-05-11 20:59:47,827 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 20:59:47,839 [INFO] triton.database (database.py:509): Database already initialized with schema version 1.0.0
+2025-05-11 20:59:47,840 [INFO] run (run.py:367): Database initialized successfully
+2025-05-11 20:59:47,840 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 20:59:48,420 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 20:59:48,452 [INFO] triton.auth (auth.py:754): Auth routes registered
+2025-05-11 20:59:48,458 [INFO] triton.admin (admin.py:675): Admin routes registered
+2025-05-11 20:59:48,462 [INFO] triton.chat (chat.py:813): Chat routes registered
+2025-05-11 20:59:48,465 [INFO] triton.images (images.py:763): Image database tables initialized
+2025-05-11 20:59:48,466 [INFO] triton.images (images.py:779): Image routes registered
+2025-05-11 20:59:48,472 [INFO] triton (run.py:121): Triton application initialized in production environment
+2025-05-11 20:59:48,494 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 20:59:48,494 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 20:59:48,497 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 20:59:48,497 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 20:59:51,887 [INFO] run (run.py:501): Request: GET / - Status: 200 - Duration: 0.0000s
+2025-05-11 20:59:51,892 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 20:59:51] "GET / HTTP/1.1" 200 -
+2025-05-11 20:59:51,892 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 20:59:51] "GET / HTTP/1.1" 200 -
+2025-05-11 20:59:52,076 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 20:59:52] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 20:59:52,076 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 20:59:52] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:04,535 [INFO] run (run.py:501): Request: GET / - Status: 200 - Duration: 0.0000s
+2025-05-11 21:00:04,536 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:04] "GET / HTTP/1.1" 200 -
+2025-05-11 21:00:04,536 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:04] "GET / HTTP/1.1" 200 -
+2025-05-11 21:00:04,577 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:04] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:04,577 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:04] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:12,815 [INFO] run (run.py:501): Request: GET / - Status: 200 - Duration: 0.0000s
+2025-05-11 21:00:12,816 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:12] "GET / HTTP/1.1" 200 -
+2025-05-11 21:00:12,816 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:12] "GET / HTTP/1.1" 200 -
+2025-05-11 21:00:13,072 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:13] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:13,072 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:13] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:21,934 [INFO] run (run.py:501): Request: GET /login - Status: 200 - Duration: 0.0161s
+2025-05-11 21:00:21,935 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:21] "GET /login HTTP/1.1" 200 -
+2025-05-11 21:00:21,935 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:21] "GET /login HTTP/1.1" 200 -
+2025-05-11 21:00:22,393 [INFO] run (run.py:501): Request: GET /static/components/modal.js - Status: 200 - Duration: 0.1159s
+2025-05-11 21:00:22,394 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "GET /static/components/modal.js HTTP/1.1" 200 -
+2025-05-11 21:00:22,394 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "GET /static/components/modal.js HTTP/1.1" 200 -
+2025-05-11 21:00:22,396 [INFO] run (run.py:501): Request: GET /static/css/main.css - Status: 200 - Duration: 0.1201s
+2025-05-11 21:00:22,398 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "GET /static/css/main.css HTTP/1.1" 200 -
+2025-05-11 21:00:22,398 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "GET /static/css/main.css HTTP/1.1" 200 -
+2025-05-11 21:00:22,398 [INFO] run (run.py:501): Request: GET /static/js/auth.js - Status: 200 - Duration: 0.1194s
+2025-05-11 21:00:22,399 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "GET /static/js/auth.js HTTP/1.1" 200 -
+2025-05-11 21:00:22,399 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "GET /static/js/auth.js HTTP/1.1" 200 -
+2025-05-11 21:00:22,531 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:22,531 [INFO] werkzeug (_internal.py:97): 127.0.0.1 - - [11/May/2025 21:00:22] "[35m[1mGET /favicon.ico HTTP/1.1[0m" 500 -
+2025-05-11 21:00:41,018 [INFO] werkzeug (_internal.py:97):  * Detected change in 'C:\\Coding\\Triton\\routes\\auth.py', reloading
+2025-05-11 21:00:41,018 [INFO] werkzeug (_internal.py:97):  * Detected change in 'C:\\Coding\\Triton\\routes\\auth.py', reloading
+2025-05-11 21:00:41,020 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:00:41,020 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:00:41,231 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 21:00:41,231 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 21:00:44,061 [INFO] run (run.py:337): Logging configured with level INFO
+2025-05-11 21:00:44,062 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 21:00:44,063 [INFO] triton.database (database.py:509): Database already initialized with schema version 1.0.0
+2025-05-11 21:00:44,064 [INFO] run (run.py:361): Database initialized successfully
+2025-05-11 21:00:44,064 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 21:00:44,571 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 21:00:44,571 [INFO] triton.auth (auth.py:708): Auth routes registered
+2025-05-11 21:00:44,571 [INFO] triton.admin (admin.py:675): Admin routes registered
+2025-05-11 21:00:44,585 [INFO] triton.chat (chat.py:813): Chat routes registered
+2025-05-11 21:00:44,589 [INFO] triton.images (images.py:763): Image database tables initialized
+2025-05-11 21:00:44,589 [INFO] triton.images (images.py:779): Image routes registered
+2025-05-11 21:00:44,589 [INFO] triton (run.py:115): Triton application initialized in production environment
+2025-05-11 21:00:44,611 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 21:00:44,611 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 21:00:44,617 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 21:00:44,617 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 21:00:49,686 [INFO] werkzeug (_internal.py:97):  * Detected change in 'C:\\Coding\\Triton\\run.py', reloading
+2025-05-11 21:00:49,686 [INFO] werkzeug (_internal.py:97):  * Detected change in 'C:\\Coding\\Triton\\run.py', reloading
+2025-05-11 21:00:49,688 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:00:49,688 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:00:49,885 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 21:00:49,885 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 21:00:53,567 [INFO] run (run.py:337): Logging configured with level INFO
+2025-05-11 21:00:53,568 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 21:00:53,570 [INFO] triton.database (database.py:509): Database already initialized with schema version 1.0.0
+2025-05-11 21:00:53,570 [INFO] run (run.py:361): Database initialized successfully
+2025-05-11 21:00:53,570 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 21:00:54,149 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 21:00:54,151 [INFO] triton.auth (auth.py:708): Auth routes registered
+2025-05-11 21:00:54,151 [INFO] triton.admin (admin.py:675): Admin routes registered
+2025-05-11 21:00:54,159 [INFO] triton.chat (chat.py:813): Chat routes registered
+2025-05-11 21:00:54,163 [INFO] triton.images (images.py:763): Image database tables initialized
+2025-05-11 21:00:54,163 [INFO] triton.images (images.py:779): Image routes registered
+2025-05-11 21:00:54,165 [INFO] triton (run.py:115): Triton application initialized in production environment
+2025-05-11 21:00:54,188 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 21:00:54,188 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 21:00:54,194 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 21:00:54,194 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 21:00:59,262 [INFO] werkzeug (_internal.py:97):  * Detected change in 'C:\\Coding\\Triton\\routes\\auth.py', reloading
+2025-05-11 21:00:59,262 [INFO] werkzeug (_internal.py:97):  * Detected change in 'C:\\Coding\\Triton\\routes\\auth.py', reloading
+2025-05-11 21:00:59,262 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:00:59,262 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:00:59,563 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 21:00:59,563 [INFO] werkzeug (_internal.py:97):  * Restarting with stat
+2025-05-11 21:01:02,891 [INFO] run (run.py:337): Logging configured with level INFO
+2025-05-11 21:01:02,891 [INFO] triton.database (database.py:368): Initializing database at data/triton.db
+2025-05-11 21:01:02,891 [INFO] triton.database (database.py:509): Database already initialized with schema version 1.0.0
+2025-05-11 21:01:02,891 [INFO] run (run.py:361): Database initialized successfully
+2025-05-11 21:01:02,901 [INFO] triton.monitor (monitor.py:50): Monitoring service initialized for Triton on Aoede
+2025-05-11 21:01:03,390 [INFO] triton.monitor (monitor.py:89): Background monitoring thread started
+2025-05-11 21:01:03,391 [INFO] triton.auth (auth.py:708): Auth routes registered
+2025-05-11 21:01:03,403 [INFO] triton.admin (admin.py:675): Admin routes registered
+2025-05-11 21:01:03,408 [INFO] triton.chat (chat.py:813): Chat routes registered
+2025-05-11 21:01:03,411 [INFO] triton.images (images.py:763): Image database tables initialized
+2025-05-11 21:01:03,411 [INFO] triton.images (images.py:779): Image routes registered
+2025-05-11 21:01:03,418 [INFO] triton (run.py:115): Triton application initialized in production environment
+2025-05-11 21:01:03,448 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 21:01:03,448 [WARNING] werkzeug (_internal.py:97):  * Debugger is active!
+2025-05-11 21:01:03,453 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 21:01:03,453 [INFO] werkzeug (_internal.py:97):  * Debugger PIN: 102-422-528
+2025-05-11 21:01:07,545 [INFO] run (run.py:601): Received signal 2, shutting down gracefully...
+2025-05-11 21:01:07,653 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:01:07,654 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:01:07,855 [INFO] run (run.py:698): Received signal 2, shutting down gracefully...
+2025-05-11 21:01:07,905 [INFO] triton.database (database.py:83): Cleaning up database connections
+2025-05-11 21:01:07,906 [INFO] triton.database (database.py:83): Cleaning up database connections
